@@ -56,6 +56,8 @@
   .chip.crit { background: var(--bad); color: #fff; }
   .name { font-weight: 600; margin: 4px 0 2px; }
   .note { font-size: 13px; color: var(--muted); }
+  .res { font-size: 13px; color: var(--muted); }
+  .res a { color: var(--accent); }
   .people { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .person { border: 1px solid var(--line); background: transparent; color: var(--muted);
     border-radius: 999px; padding: 3px 10px; font-size: 13px; }
@@ -237,6 +239,14 @@ async function poll(taskId) {
 }
 
 // ---- rendering ------------------------------------------------------------------
+function resourceLinks(task) {
+  const links = (task.resources || [])
+    .map((r) => (typeof r === "string" ? { label: r, url: r } : r))
+    .filter((r) => r && /^https?:\/\//i.test(r.url || ""))
+    .map((r) => `<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.label || r.url)}</a>`);
+  return links.length ? `<div class="res">Resources: ${links.join(" · ")}</div>` : "";
+}
+
 function taskCard(task) {
   const m = statusOf(task);
   const overdue = isOverdue(task);
@@ -278,6 +288,7 @@ function taskCard(task) {
     </div>
     <div class="name">${esc(task.name)}</div>
     ${task.note ? `<div class="note">${esc(task.note)}</div>` : ""}
+    ${resourceLinks(task)}
     <div class="people">${people}</div>
     <div class="row">${actionBtn}${jobLine}${secondary}</div>
   </div>`;
