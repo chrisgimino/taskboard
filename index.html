@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Task Board</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --card: #ffffff; --ink: #16181d; --muted: #6b7280; --line: #e3e5ea;
+    --accent: #2f5bea; --accent-ink: #ffffff; --ok: #1f8a4c; --ok-bg: #e6f4ec;
+    --warn: #b26a00; --warn-bg: #fff3dc; --bad: #c62828; --bad-bg: #fdecec; --chip: #eef0f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1115; --card: #181b21; --ink: #e8eaef; --muted: #9aa1ad; --line: #2a2f38;
+      --accent: #6d8dff; --accent-ink: #0f1115; --ok: #4cc27f; --ok-bg: #12301f;
+      --warn: #f0b04a; --warn-bg: #33270f; --bad: #ff6b6b; --bad-bg: #3a1616; --chip: #232731;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  button { font: inherit; cursor: pointer; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 16px 48px; }
+  header { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 12px 0 8px;
+    border-bottom: 1px solid var(--line); }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  h1 { font-size: 18px; margin: 0; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .linkbtn { background: none; border: 0; color: var(--accent); padding: 4px 0; white-space: nowrap; }
+  header .wrap { padding-bottom: 0; }
+  .summary { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .pill { background: var(--chip); border-radius: 999px; padding: 3px 10px; font-size: 13px; }
+  .pill.bad { background: var(--bad-bg); color: var(--bad); font-weight: 600; }
+  .pill.ok { background: var(--ok-bg); color: var(--ok); }
+  nav { display: flex; gap: 6px; margin-top: 10px; overflow-x: auto; }
+  nav button { border: 1px solid var(--line); background: var(--card); color: var(--ink);
+    border-radius: 8px; padding: 6px 12px; white-space: nowrap; }
+  nav button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .filters { display: flex; gap: 6px; flex-wrap: wrap; margin: 12px 0 4px; }
+  .filters button { border: 1px solid var(--line); background: var(--card); color: var(--ink);
+    border-radius: 999px; padding: 4px 12px; font-size: 13px; }
+  .filters button.on { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 18px 0 8px; }
+  .task { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--line);
+    border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; }
+  .task.overdue { border-left-color: var(--bad); background: var(--bad-bg); }
+  .task.critical { border-left-color: var(--bad); }
+  .task.closed { opacity: .72; }
+  .task.done { border-left-color: var(--ok); }
+  .meta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: 12px; color: var(--muted); }
+  .meta .due { font-weight: 600; color: var(--ink); }
+  .task.overdue .meta .due { color: var(--bad); }
+  .chip { background: var(--chip); border-radius: 6px; padding: 1px 7px; }
+  .chip.crit { background: var(--bad); color: #fff; }
+  .name { font-weight: 600; margin: 4px 0 2px; }
+  .note { font-size: 13px; color: var(--muted); }
+  .people { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .person { border: 1px solid var(--line); background: transparent; color: var(--muted);
+    border-radius: 999px; padding: 3px 10px; font-size: 13px; }
+  .person.me { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .person.me:active { transform: scale(.97); }
+  .person.closer { background: var(--ok-bg); border-color: var(--ok); color: var(--ok); font-weight: 600; }
+  .person.closer.skipped, .person.closer.missed { background: var(--warn-bg); border-color: var(--warn); color: var(--warn); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+  .small { font-size: 12px; border: 1px solid var(--line); background: var(--card); color: var(--muted);
+    border-radius: 6px; padding: 3px 8px; }
+  .action { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 8px; padding: 6px 12px; font-weight: 600; }
+  .action[disabled] { opacity: .6; }
+  .astatus { font-size: 12px; color: var(--muted); }
+  .astatus.ok { color: var(--ok); } .astatus.bad { color: var(--bad); }
+  pre { white-space: pre-wrap; font-size: 11px; background: var(--chip); padding: 8px; border-radius: 6px; max-height: 180px; overflow: auto; }
+  table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 10px; overflow: hidden; }
+  th, td { padding: 8px; text-align: right; border-bottom: 1px solid var(--line); font-size: 14px; }
+  th:first-child, td:first-child { text-align: left; }
+  th { font-size: 12px; color: var(--muted); font-weight: 600; }
+  .empty { color: var(--muted); padding: 16px; text-align: center; background: var(--card); border-radius: 10px; }
+  .login { max-width: 360px; margin: 18vh auto 0; padding: 0 16px; }
+  .login input { width: 100%; padding: 12px; margin: 6px 0; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--card); color: var(--ink); font-size: 16px; }
+  .login button { width: 100%; padding: 12px; margin-top: 8px; border: 0; border-radius: 8px;
+    background: var(--accent); color: var(--accent-ink); font-weight: 600; font-size: 16px; }
+  .err { color: var(--bad); font-size: 14px; min-height: 20px; margin-top: 8px; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div id="login" class="login hidden">
+  <h1>Task Board</h1>
+  <p class="sub">Sign in once; you stay signed in for 30 days.</p>
+  <form id="loginForm">
+    <input id="loginName" autocomplete="username" placeholder="Name" autocapitalize="words" required>
+    <input id="loginPin" type="password" autocomplete="current-password" placeholder="PIN" required>
+    <button type="submit" id="loginBtn">Sign in</button>
+    <div class="err" id="loginErr"></div>
+  </form>
+</div>
+
+<div id="app" class="hidden">
+  <header>
+    <div class="wrap">
+      <div class="top">
+        <div>
+          <h1>Task Board</h1>
+          <div class="sub" id="subline"></div>
+        </div>
+        <button class="linkbtn" id="signOut">Sign out</button>
+      </div>
+      <div class="summary" id="summary"></div>
+      <nav id="tabs">
+        <button data-tab="all">All Sports</button>
+        <button data-tab="sport">By Sport</button>
+        <button data-tab="news">News</button>
+        <button data-tab="score">Scoreboard</button>
+      </nav>
+    </div>
+  </header>
+  <main class="wrap" id="main"></main>
+</div>
+
+<script>
+// ---- configuration -------------------------------------------------------------
+const API = "https://libet75snx5exjbgn6ds6k2bve0iyvhn.lambda-url.us-east-1.on.aws/";   // board Lambda function URL
+const REFRESH_MS = 60000;
+const TZ = "America/New_York";
+
+// ---- small helpers ---------------------------------------------------------------
+const $ = (id) => document.getElementById(id);
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+  del(k) { try { localStorage.removeItem(k); } catch {} },
+};
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmtTime = (iso) => iso ? new Date(iso).toLocaleTimeString("en-US", { timeZone: TZ, hour: "numeric", minute: "2-digit" }) : "";
+const fmtDate = (iso) => new Date(iso).toLocaleDateString("en-US", { timeZone: TZ, weekday: "short", month: "short", day: "numeric" });
+
+let state = null;
+let tab = store.get("tab") || "all";
+let sportFilter = store.get("sport") || "";
+let showClosed = false;
+const running = {};   // task_id -> {command_id, status, stdout, stderr}
+
+async function api(payload) {
+  const token = store.get("token");
+  const res = await fetch(API, { method: "POST", body: JSON.stringify({ ...payload, token }) });  // text/plain: no preflight
+  let data = {};
+  try { data = await res.json(); } catch {}
+  if (res.status === 401 && payload.op !== "login") { signOut(); throw new Error(data.error || "Please sign in again"); }
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
+}
+
+// ---- sign in -------------------------------------------------------------------
+$("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  $("loginErr").textContent = "";
+  $("loginBtn").disabled = true;
+  try {
+    const data = await api({ op: "login", name: $("loginName").value, pin: $("loginPin").value });
+    store.set("token", data.token);
+    $("loginPin").value = "";
+    start();
+  } catch (err) {
+    $("loginErr").textContent = err.message;
+  } finally {
+    $("loginBtn").disabled = false;
+  }
+});
+
+function signOut() {
+  store.del("token");
+  state = null;
+  $("app").classList.add("hidden");
+  $("login").classList.remove("hidden");
+}
+$("signOut").addEventListener("click", signOut);
+
+// ---- data -----------------------------------------------------------------------
+async function load() {
+  try {
+    state = await api({ op: "state" });
+    render();
+  } catch (err) {
+    if (store.get("token")) $("subline").textContent = "Couldn't refresh: " + err.message;
+  }
+}
+
+function statusOf(task) {
+  const m = state.marks[task.task_id];
+  return m && m.status !== "open" ? m : null;
+}
+function isOverdue(task) {
+  return !statusOf(task) && task.due_et && task.kind !== "placeholder" && new Date(task.due_et) < new Date();
+}
+
+// ---- actions --------------------------------------------------------------------
+async function mark(taskId, status) {
+  try {
+    const data = await api({ op: "mark", task_id: taskId, status, date: state.date });
+    state.marks = data.marks;
+    state.stats = data.stats;
+    render();
+  } catch (err) { alert(err.message); }
+}
+
+async function runAction(taskId) {
+  running[taskId] = { status: "Starting…" };
+  render();
+  try {
+    const data = await api({ op: "action", task_id: taskId, date: state.date });
+    running[taskId] = { command_id: data.command_id, status: "Running" };
+    render();
+    poll(taskId);
+  } catch (err) {
+    running[taskId] = { status: "Failed", stderr: err.message };
+    render();
+  }
+}
+
+async function poll(taskId) {
+  const job = running[taskId];
+  const started = Date.now();
+  while (job && Date.now() - started < 30 * 60000) {
+    await new Promise((r) => setTimeout(r, 5000));
+    try {
+      const data = await api({ op: "action_status", command_id: job.command_id });
+      Object.assign(job, { status: data.status, stdout: data.stdout, stderr: data.stderr });
+      render();
+      if (!["Pending", "InProgress", "Delayed", "Running", undefined, null].includes(data.status)) return;
+    } catch (err) {
+      job.status = "Status check failed"; job.stderr = err.message; render(); return;
+    }
+  }
+}
+
+// ---- rendering ------------------------------------------------------------------
+function taskCard(task) {
+  const m = statusOf(task);
+  const overdue = isOverdue(task);
+  const classes = ["task"];
+  if (overdue) classes.push("overdue");
+  if (task.kind === "critical") classes.push("critical");
+  if (m) classes.push("closed", m.status === "done" ? "done" : "");
+  const me = state.user;
+  const people = state.team.map((name) => {
+    if (m && m.user === name) {
+      const label = m.status === "done" ? "✓" : m.status === "skipped" ? "skipped" : "missed";
+      return `<span class="person closer ${esc(m.status)}">${label} ${esc(name)} ${fmtTime(m.at_et)}</span>`;
+    }
+    if (name === me && !m && task.kind !== "placeholder") {
+      return `<button class="person me" data-mark="done" data-task="${esc(task.task_id)}">${esc(name)}</button>`;
+    }
+    return `<span class="person">${esc(name)}</span>`;
+  }).join("");
+  const job = running[task.task_id];
+  const actionBtn = task.action && task.kind !== "placeholder"
+    ? `<button class="action" data-action="${esc(task.task_id)}" ${job && !["Success", "Failed", "Cancelled", "TimedOut", "Status check failed"].includes(job.status) ? "disabled" : ""}>Run ${esc(task.action)}</button>`
+    : "";
+  const jobLine = job
+    ? `<span class="astatus ${job.status === "Success" ? "ok" : /Fail|Cancel|Timed/.test(job.status) ? "bad" : ""}">${esc(job.status)}</span>`
+      + (job.stdout || job.stderr ? `<details><summary class="astatus">output</summary><pre>${esc((job.stdout || "") + (job.stderr ? "\n" + job.stderr : ""))}</pre></details>` : "")
+    : "";
+  const secondary = m
+    ? `<button class="small" data-mark="open" data-task="${esc(task.task_id)}">Reopen</button>`
+    : task.kind === "placeholder" ? ""
+    : `<button class="small" data-mark="skipped" data-task="${esc(task.task_id)}">Skip</button>
+       <button class="small" data-mark="missed" data-task="${esc(task.task_id)}">Missed</button>`;
+  return `<div class="${classes.join(" ")}">
+    <div class="meta">
+      <span class="due">${task.due_et ? fmtTime(task.due_et) : "no due time"}</span>
+      <span class="chip">${esc(task.sport)}</span>
+      ${task.kind === "critical" ? '<span class="chip crit">CRITICAL</span>' : ""}
+      ${overdue ? '<span class="chip crit">OVERDUE</span>' : ""}
+      ${task.category ? `<span>${esc(task.category)}</span>` : ""}
+    </div>
+    <div class="name">${esc(task.name)}</div>
+    ${task.note ? `<div class="note">${esc(task.note)}</div>` : ""}
+    <div class="people">${people}</div>
+    <div class="row">${actionBtn}${jobLine}${secondary}</div>
+  </div>`;
+}
+
+function taskList(tasks) {
+  const open = tasks.filter((t) => !statusOf(t));
+  const closed = tasks.filter((t) => statusOf(t));
+  const critical = open.filter((t) => t.kind === "critical");
+  const overdue = open.filter((t) => t.kind !== "critical" && isOverdue(t));
+  const upcoming = open.filter((t) => t.kind !== "critical" && !isOverdue(t));
+  let html = "";
+  if (critical.length) html += `<h2>Critical</h2>` + critical.map(taskCard).join("");
+  if (overdue.length) html += `<h2>Overdue</h2>` + overdue.map(taskCard).join("");
+  html += `<h2>Up next</h2>` + (upcoming.length ? upcoming.map(taskCard).join("") : `<div class="empty">Nothing open.</div>`);
+  html += `<h2>Closed (${closed.length}) <button class="linkbtn" id="toggleClosed">${showClosed ? "hide" : "show"}</button></h2>`;
+  if (showClosed) html += closed.map(taskCard).join("") || `<div class="empty">None yet.</div>`;
+  return html;
+}
+
+function scoreTable(title, people) {
+  const rows = Object.entries(people || {}).sort((a, b) => b[1].done - a[1].done);
+  if (!rows.length) return `<h2>${title}</h2><div class="empty">No marks yet.</div>`;
+  return `<h2>${title}</h2><table><thead><tr><th>Person</th><th>Done</th><th>On time</th><th>Late</th><th>Missed</th><th>Skipped</th></tr></thead><tbody>`
+    + rows.map(([name, r]) => `<tr><td>${esc(name)}</td><td>${r.done}</td><td>${r.on_time}</td><td>${r.late}</td><td>${r.missed}</td><td>${r.skipped}</td></tr>`).join("")
+    + `</tbody></table>`;
+}
+
+function render() {
+  if (!state) return;
+  $("subline").textContent = `${fmtDate(state.now_et)} · signed in as ${state.user} · updated ${fmtTime(new Date().toISOString())}`;
+  const tasks = state.tasks;
+  const open = tasks.filter((t) => !statusOf(t) && t.kind !== "placeholder");
+  const overdue = open.filter(isOverdue).length;
+  const crit = open.filter((t) => t.kind === "critical").length;
+  const done = tasks.filter((t) => statusOf(t)?.status === "done").length;
+  $("summary").innerHTML =
+    `<span class="pill ${overdue ? "bad" : ""}">${overdue} overdue</span>` +
+    `<span class="pill ${crit ? "bad" : ""}">${crit} critical</span>` +
+    `<span class="pill">${open.length} open</span>` +
+    `<span class="pill ok">${done} done</span>`;
+  document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === tab));
+
+  let html = "";
+  const work = tasks.filter((t) => t.kind !== "placeholder");
+  if (tab === "all") {
+    html = work.length ? taskList(work) : `<div class="empty" style="margin-top:16px">No tasks for today yet.</div>`;
+  } else if (tab === "sport") {
+    const sports = [...new Set(work.map((t) => t.sport))].sort();
+    if (!sports.includes(sportFilter)) sportFilter = sports[0] || "";
+    html = `<div class="filters">${sports.map((s) => `<button data-sport="${esc(s)}" class="${s === sportFilter ? "on" : ""}">${esc(s)}</button>`).join("")}</div>`;
+    const mine = tasks.filter((t) => t.sport === sportFilter);
+    const news = mine.filter((t) => t.kind === "placeholder");
+    html += taskList(mine.filter((t) => t.kind !== "placeholder"));
+    if (news.length) html += `<h2>News</h2>` + news.map((t) => `<div class="empty">${esc(t.name)}</div>`).join("");
+  } else if (tab === "news") {
+    const news = tasks.filter((t) => t.kind === "placeholder");
+    html = `<h2>News to handle</h2><div class="empty">The news bot isn't connected yet. Urgent player-status changes will appear here as tasks.</div>`
+      + news.map((t) => `<div class="note" style="margin-top:8px">${esc(t.sport)}: ${esc(t.note || t.name)}</div>`).join("");
+  } else {
+    html = scoreTable("Today", state.stats?.today?.people) + scoreTable(`All time (${state.stats?.all?.days || 0} days)`, state.stats?.all?.people);
+  }
+  $("main").innerHTML = html;
+}
+
+// one delegated listener for every button on the board
+document.addEventListener("click", (e) => {
+  const el = e.target.closest("button");
+  if (!el) return;
+  if (el.dataset.tab) { tab = el.dataset.tab; store.set("tab", tab); render(); }
+  else if (el.dataset.sport) { sportFilter = el.dataset.sport; store.set("sport", sportFilter); render(); }
+  else if (el.dataset.mark) { mark(el.dataset.task, el.dataset.mark); }
+  else if (el.dataset.action) { runAction(el.dataset.action); }
+  else if (el.id === "toggleClosed") { showClosed = !showClosed; render(); }
+});
+
+// ---- start ----------------------------------------------------------------------
+let timer = null;
+function start() {
+  $("login").classList.add("hidden");
+  $("app").classList.remove("hidden");
+  load();
+  clearInterval(timer);
+  timer = setInterval(load, REFRESH_MS);
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden && store.get("token")) load(); });
+
+if (store.get("token")) start(); else $("login").classList.remove("hidden");
+</script>
+</body>
+</html>
