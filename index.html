@@ -114,7 +114,7 @@
       <nav id="tabs">
         <button data-tab="all">All Sports</button>
         <button data-tab="sport">By Sport</button>
-        <button data-tab="news">News</button>
+        <button data-tab="news">News<span id="newsCount"></span></button>
         <button data-tab="score">Scoreboard</button>
       </nav>
     </div>
@@ -331,6 +331,8 @@ function render() {
     `<span class="pill">${open.length} open</span>` +
     `<span class="pill ok">${done} done</span>`;
   document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === tab));
+  const openNews = tasks.filter((t) => t.kind === "news" && !statusOf(t)).length;
+  $("newsCount").textContent = openNews ? ` (${openNews})` : "";
 
   let html = "";
   const work = tasks.filter((t) => t.kind !== "placeholder");
@@ -345,9 +347,10 @@ function render() {
     html += taskList(mine.filter((t) => t.kind !== "placeholder"));
     if (news.length) html += `<h2>News</h2>` + news.map((t) => `<div class="empty">${esc(t.name)}</div>`).join("");
   } else if (tab === "news") {
-    const news = tasks.filter((t) => t.kind === "placeholder");
-    html = `<h2>News to handle</h2><div class="empty">The news bot isn't connected yet. Urgent player-status changes will appear here as tasks.</div>`
-      + news.map((t) => `<div class="note" style="margin-top:8px">${esc(t.sport)}: ${esc(t.note || t.name)}</div>`).join("");
+    const news = tasks.filter((t) => t.kind === "news");
+    html = news.length
+      ? taskList(news)
+      : `<div class="empty" style="margin-top:16px">No news items today. Official injury-report status changes appear here as tasks, due 15 minutes after they're seen.</div>`;
   } else {
     html = scoreTable("Today", state.stats?.today?.people) + scoreTable(`All time (${state.stats?.all?.days || 0} days)`, state.stats?.all?.people);
   }
