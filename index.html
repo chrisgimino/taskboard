@@ -71,6 +71,7 @@
   .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
   .small { font-size: 12px; border: 1px solid var(--line); background: var(--card); color: var(--muted);
     border-radius: 6px; padding: 3px 8px; }
+  #paused { cursor: pointer; text-decoration: underline; }
   .action { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 8px; padding: 6px 12px; font-weight: 600; }
   .action[disabled] { opacity: .6; }
   .astatus { font-size: 12px; color: var(--muted); }
@@ -110,6 +111,7 @@
         <div>
           <h1>Task Board</h1>
           <div class="sub" id="subline"></div>
+          <div class="sub hidden" id="paused"></div>
         </div>
         <button class="linkbtn" id="signOut">Sign out</button>
       </div>
@@ -128,7 +130,13 @@
 <script>
 // ---- configuration -------------------------------------------------------------
 const API = "https://libet75snx5exjbgn6ds6k2bve0iyvhn.lambda-url.us-east-1.on.aws/";   // board Lambda function URL
-const REFRESH_MS = 60000;
+const REFRESH_MS = 150000;          // normal refresh: 2.5 min
+const CRUNCH_REFRESH_MS = 60000;    // within CRUNCH_MS before a default slate lock: 1 min
+const CRUNCH_MS = 90 * 60000;
+const IDLE_MS = 15 * 60000;         // no mouse / key / scroll / touch for 15 min: pause
+const QUIET_START = 1, QUIET_END = 6;  // no auto-refresh 1-6 AM ET (daylight saving handled by the ET zone)
+const TICK_MS = 15000;              // how often the page checks the rules above (no network)
+const JOB_CHECK_MS = 60000;         // run-button job status checks
 const TZ = "America/New_York";
 
 // ---- small helpers ---------------------------------------------------------------
@@ -184,9 +192,12 @@ function signOut() {
 $("signOut").addEventListener("click", signOut);
 
 // ---- data -----------------------------------------------------------------------
-async function load() {
+async function load(auto = false) {
+  lastLoad = Date.now();               // set before the call so a slow reply can't trigger a second one
   try {
-    state = await api({ op: "state" });
+    const data = await api({ op: "state", ...(auto ? { auto: true } : {}) });
+    if (data.paused) return;            // Lambda: no automatic refresh 1-6 AM ET
+    state = data;
     render();
   } catch (err) {
     if (store.get("token")) $("subline").textContent = "Couldn't refresh: " + err.message;
@@ -211,30 +222,41 @@ async function mark(taskId, status) {
   } catch (err) { alert(err.message); }
 }
 
-async function runAction(taskId) {
-  running[taskId] = { status: "Starting…" };
+const FINAL = ["Success", "Failed", "Cancelled", "TimedOut", "Status check failed", "Started"];
+
+async function runAction(taskId, action) {
+  const key = taskId + "|" + action;
+  running[key] = { status: "Starting…" };
   render();
   try {
-    const data = await api({ op: "action", task_id: taskId, date: state.date });
-    running[taskId] = { command_id: data.command_id, status: "Running" };
+    const data = await api({ op: "action", task_id: taskId, action, date: state.date });
+    if (!data.command_id) {            // SimIQ: started, no status to poll (results post in Slack)
+      running[key] = { status: "Started", stdout: data.text || "" };
+      render();
+      return;
+    }
+    running[key] = { command_id: data.command_id, status: "Running — checks every 60 s" };
     render();
-    poll(taskId);
+    poll(key);
   } catch (err) {
-    running[taskId] = { status: "Failed", stderr: err.message };
+    running[key] = { status: "Failed", stderr: err.message };
     render();
   }
 }
 
-async function poll(taskId) {
-  const job = running[taskId];
+async function poll(key) {
+  const job = running[key];
   const started = Date.now();
   while (job && Date.now() - started < 30 * 60000) {
-    await new Promise((r) => setTimeout(r, 5000));
+    await new Promise((r) => setTimeout(r, JOB_CHECK_MS));
     try {
       const data = await api({ op: "action_status", command_id: job.command_id });
       Object.assign(job, { status: data.status, stdout: data.stdout, stderr: data.stderr });
       render();
-      if (!["Pending", "InProgress", "Delayed", "Running", undefined, null].includes(data.status)) return;
+      if (["Pending", "InProgress", "Delayed", "Running", undefined, null].includes(data.status)) {
+        job.status = (data.status || "Running") + " — checks every 60 s"; render(); continue;
+      }
+      return;
     } catch (err) {
       job.status = "Status check failed"; job.stderr = err.message; render(); return;
     }
@@ -268,14 +290,18 @@ function taskCard(task) {
     }
     return `<span class="person">${esc(name)}</span>`;
   }).join("");
-  const job = running[task.task_id];
-  const actionBtn = task.action && task.kind !== "placeholder"
-    ? `<button class="action" data-action="${esc(task.task_id)}" ${job && !["Success", "Failed", "Cancelled", "TimedOut", "Status check failed"].includes(job.status) ? "disabled" : ""}>Run ${esc(task.action)}</button>`
-    : "";
-  const jobLine = job
-    ? `<span class="astatus ${job.status === "Success" ? "ok" : /Fail|Cancel|Timed/.test(job.status) ? "bad" : ""}">${esc(job.status)}</span>`
-      + (job.stdout || job.stderr ? `<details><summary class="astatus">output</summary><pre>${esc((job.stdout || "") + (job.stderr ? "\n" + job.stderr : ""))}</pre></details>` : "")
-    : "";
+  const acts = task.kind === "placeholder" ? [] : (task.actions || (task.action ? [task.action] : []));
+  const labels = (state && state.actions) || {};
+  const actionBtn = acts.map((a) => {
+    const job = running[task.task_id + "|" + a];
+    const busy = job && !FINAL.includes(job.status);
+    const line = job
+      ? `<span class="astatus ${job.status === "Success" || job.status === "Started" ? "ok" : /Fail|Cancel|Timed/.test(job.status) ? "bad" : ""}">${esc(job.status)}</span>`
+        + (job.stdout || job.stderr ? `<details><summary class="astatus">output</summary><pre>${esc((job.stdout || "") + (job.stderr ? "\n" + job.stderr : ""))}</pre></details>` : "")
+      : "";
+    return `<button class="action" data-action="${esc(task.task_id)}" data-act="${esc(a)}" ${busy ? "disabled" : ""}>${esc(labels[a] || "Run " + a)}</button>${line}`;
+  }).join("");
+  const jobLine = "";
   const secondary = m
     ? `<button class="small" data-mark="open" data-task="${esc(task.task_id)}">Reopen</button>`
     : task.kind === "placeholder" ? ""
@@ -388,20 +414,65 @@ document.addEventListener("click", (e) => {
   else if (el.dataset.sport) { sportFilter = el.dataset.sport; store.set("sport", sportFilter); render(); }
   else if (el.dataset.feedsport) { feedSport = el.dataset.feedsport; render(); }
   else if (el.dataset.mark) { mark(el.dataset.task, el.dataset.mark); }
-  else if (el.dataset.action) { runAction(el.dataset.action); }
+  else if (el.dataset.action) { runAction(el.dataset.action, el.dataset.act); }
   else if (el.id === "toggleClosed") { showClosed = !showClosed; render(); }
 });
 
 // ---- start ----------------------------------------------------------------------
+// Refresh rules (Chris, 2026-11-02): only while the board is on screen; pause after IDLE_MS with no
+// mouse / key / scroll / touch; none 1-6 AM ET; every 60 s within 90 min before a default (main) slate
+// lock, otherwise every 150 s.  Opening the tab or any activity after a pause loads at once.
 let timer = null;
+let lastLoad = 0;
+let lastActivity = Date.now();
+let pausedIdle = false;
+
+function etHour() {
+  return Number(new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", hourCycle: "h23" })
+    .format(new Date()));
+}
+function quietHours() { const h = etHour(); return h >= QUIET_START && h < QUIET_END; }
+function crunch() {
+  const now = Date.now();
+  return ((state && state.main_slates) || []).some((m) => {
+    const lock = new Date(m.lock_et).getTime();
+    return lock - CRUNCH_MS <= now && now <= lock;
+  });
+}
+function showPaused(text) {
+  const el = $("paused");
+  el.textContent = text || "";
+  el.classList.toggle("hidden", !text);
+}
+function tick() {
+  if (!store.get("token") || document.hidden) return;
+  if (Date.now() - lastActivity > IDLE_MS) {
+    if (!pausedIdle) { pausedIdle = true; showPaused("Paused (no activity for 15 min) — click or tap anywhere to refresh"); }
+    return;
+  }
+  if (quietHours()) { showPaused("Auto-refresh off 1–6 AM ET — tap here to update"); return; }
+  showPaused("");
+  if (Date.now() - lastLoad >= (crunch() ? CRUNCH_REFRESH_MS : REFRESH_MS)) load(true);
+}
+function activity() {
+  lastActivity = Date.now();
+  if (pausedIdle) { pausedIdle = false; showPaused(""); if (!document.hidden) load(); }
+}
+$("paused").addEventListener("click", () => load());
+["mousemove", "mousedown", "keydown", "scroll", "wheel", "touchstart"].forEach((ev) =>
+  window.addEventListener(ev, activity, { passive: true }));
+
 function start() {
   $("login").classList.add("hidden");
   $("app").classList.remove("hidden");
+  lastActivity = Date.now();
   load();
   clearInterval(timer);
-  timer = setInterval(load, REFRESH_MS);
+  timer = setInterval(tick, TICK_MS);
 }
-document.addEventListener("visibilitychange", () => { if (!document.hidden && store.get("token")) load(); });
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && store.get("token")) { lastActivity = Date.now(); pausedIdle = false; showPaused(""); load(); }
+});
 
 if (store.get("token")) start(); else $("login").classList.remove("hidden");
 </script>
