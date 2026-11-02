@@ -88,6 +88,80 @@
   .login button { width: 100%; padding: 12px; margin-top: 8px; border: 0; border-radius: 8px;
     background: var(--accent); color: var(--accent-ink); font-weight: 600; font-size: 16px; }
   .err { color: var(--bad); font-size: 14px; min-height: 20px; margin-top: 8px; }
+  /* ---- schedule timeline / heat map / news desk ---- */
+  body.wide .wrap { max-width: none; }
+  :root {
+    --sp-football: #2a78d6; --sp-basketball: #eb6834; --sp-baseball: #1baf7a; --sp-hockey: #eda100;
+    --sp-soccer: #e87ba4; --sp-golf: #008300; --sp-mma: #6250d6; --sp-tennis: #e34948; --sp-other: #8a8f98;
+    --h1: #cde2fb; --h2: #9ec5f4; --h3: #6da7ec; --h4: #3987e5; --h5: #256abf; --h6: #104281;
+    --h-ink-dark: #0b1a2e; --now: #e34948;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --sp-football: #3987e5; --sp-basketball: #d95926; --sp-baseball: #199e70; --sp-hockey: #c98500;
+      --sp-soccer: #d55181; --sp-golf: #008300; --sp-mma: #9085e9; --sp-tennis: #e66767; --sp-other: #6b717c;
+      --h1: #12294a; --h2: #184f95; --h3: #256abf; --h4: #3987e5; --h5: #6da7ec; --h6: #b7d3f6;
+      --h-ink-dark: #0b1a2e; --now: #ff6b6b;
+    }
+  }
+  .bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 12px 0 8px; }
+  .bar .day { font-weight: 700; font-size: 16px; min-width: 150px; text-align: center; }
+  .bar input[type=date] { font: inherit; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--ink); }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button { border: 0; background: var(--card); color: var(--ink); padding: 4px 10px; font-size: 13px; }
+  .seg button.on { background: var(--accent); color: var(--accent-ink); }
+  .tl { position: relative; overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
+  .tl-inner { position: relative; }
+  .tl-axis, .tl-row { display: flex; }
+  .tl-label { position: sticky; left: 0; z-index: 3; flex: 0 0 var(--lw, 120px); background: var(--card); border-right: 1px solid var(--line);
+    padding: 6px 8px; font-size: 13px; font-weight: 600; display: flex; align-items: flex-start; gap: 6px; }
+  .tl-label .sw { width: 4px; align-self: stretch; border-radius: 2px; }
+  .tl-label .cnt { color: var(--muted); font-weight: 400; font-size: 12px; }
+  .tl-track { position: relative; flex: 0 0 auto; border-bottom: 1px solid var(--line); }
+  .tl-axis .tl-track { height: 26px; }
+  .tick { position: absolute; top: 0; bottom: 0; border-left: 1px solid var(--line); font-size: 11px; color: var(--muted); padding: 5px 0 0 4px; white-space: nowrap; }
+  .grid-line { position: absolute; top: 0; bottom: 0; border-left: 1px dashed var(--line); opacity: .7; }
+  .gchip { position: absolute; height: 22px; line-height: 20px; font-size: 12px; white-space: nowrap; padding: 0 7px 0 9px;
+    background: var(--chip); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; cursor: pointer; overflow: hidden; }
+  .gchip::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--c, var(--sp-other)); }
+  .gchip:hover, .gchip.sel { border-color: var(--accent); }
+  .lock { position: absolute; top: 3px; width: 11px; height: 11px; transform: translateX(-5.5px) rotate(45deg); background: var(--card);
+    border: 2px solid var(--muted); cursor: pointer; }
+  .lock.def { border-color: var(--accent); background: var(--accent); }
+  .lock.sl::after { content: "SL"; position: absolute; transform: rotate(-45deg); left: 9px; top: -9px; font-size: 9px; font-weight: 700; color: var(--accent); }
+  .now { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--now); z-index: 2; pointer-events: none; }
+  .now span { position: absolute; bottom: 2px; left: 4px; background: var(--card); padding: 0 3px; border-radius: 3px; font-size: 10px; font-weight: 700; color: var(--now); white-space: nowrap; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin: 8px 2px; align-items: center; }
+  .legend i { display: inline-block; width: 10px; height: 10px; margin-right: 4px; vertical-align: -1px; }
+  .legend i.d { transform: rotate(45deg); border: 2px solid var(--muted); width: 8px; height: 8px; }
+  .legend i.d.def { border-color: var(--accent); background: var(--accent); }
+  .detail { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-top: 10px; }
+  .detail h3 { margin: 0 0 6px; font-size: 14px; }
+  .detail ul { margin: 0; padding-left: 18px; font-size: 13px; }
+  .tip { position: fixed; z-index: 50; pointer-events: none; background: var(--ink); color: var(--bg); font-size: 12px; padding: 6px 8px;
+    border-radius: 6px; max-width: 320px; box-shadow: 0 4px 14px rgba(0,0,0,.25); }
+  .heat { overflow: auto; max-height: 70vh; background: var(--card); border: 1px solid var(--line); border-radius: 10px; margin-top: 10px; }
+  .heat table { border-collapse: separate; border-spacing: 2px; background: none; width: auto; }
+  .heat th, .heat td { border: 0; padding: 0; font-size: 11px; text-align: center; }
+  .heat thead th { position: sticky; top: 0; background: var(--card); color: var(--muted); z-index: 2; padding: 4px 0; min-width: 34px; }
+  .heat th.dl { position: sticky; left: 0; background: var(--card); z-index: 3; text-align: left; padding: 0 8px; white-space: nowrap; color: var(--ink); font-weight: 600; }
+  .heat td.c { width: 34px; height: 24px; border-radius: 4px; background: var(--bg); cursor: pointer; color: var(--h-ink-dark); font-weight: 600; }
+  .heat td.c.l1 { background: var(--h1); } .heat td.c.l2 { background: var(--h2); } .heat td.c.l3 { background: var(--h3); color: #fff; }
+  .heat td.c.l4 { background: var(--h4); color: #fff; } .heat td.c.l5 { background: var(--h5); color: #fff; } .heat td.c.l6 { background: var(--h6); color: #fff; }
+  @media (prefers-color-scheme: dark) { .heat td.c.l1, .heat td.c.l2 { color: #e8eaef; } .heat td.c.l5, .heat td.c.l6 { color: #0b1a2e; } }
+  .heat td.c:hover { outline: 2px solid var(--accent); }
+  .heat tr.today th.dl { color: var(--accent); }
+  .scale { display: inline-flex; gap: 2px; align-items: center; }
+  .scale b { width: 18px; height: 10px; border-radius: 2px; display: inline-block; }
+  .desk { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 8px; margin-top: 10px; }
+  .col { flex: 0 0 330px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; display: flex; flex-direction: column;
+    max-height: calc(100vh - 230px); }
+  .col h3 { margin: 0; padding: 8px 12px; font-size: 14px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; }
+  .col h3 .cnt { color: var(--muted); font-weight: 400; }
+  .col .body { overflow-y: auto; padding: 0 12px 8px; }
+  .col .news-task { border-left: 3px solid var(--bad); background: var(--bad-bg); padding: 6px 8px; margin: 8px 0; border-radius: 6px; font-size: 13px; }
+  .col .news-task.done { border-left-color: var(--ok); background: var(--ok-bg); opacity: .75; }
+  .col .feed .ftext { font-size: 13px; }
   .hidden { display: none !important; }
 </style>
 </head>
@@ -120,6 +194,7 @@
         <button data-tab="all">All Sports</button>
         <button data-tab="sport">By Sport</button>
         <button data-tab="news">News<span id="newsCount"></span></button>
+        <button data-tab="schedule">Schedule</button>
         <button data-tab="score">Scoreboard</button>
       </nav>
     </div>
@@ -213,9 +288,9 @@ function isOverdue(task) {
 }
 
 // ---- actions --------------------------------------------------------------------
-async function mark(taskId, status) {
+async function mark(taskId, status, asUser) {
   try {
-    const data = await api({ op: "mark", task_id: taskId, status, date: state.date });
+    const data = await api({ op: "mark", task_id: taskId, status, date: state.date, ...(asUser ? { as_user: asUser } : {}) });
     state.marks = data.marks;
     state.stats = data.stats;
     render();
@@ -283,10 +358,13 @@ function taskCard(task) {
   const people = state.team.map((name) => {
     if (m && m.user === name) {
       const label = m.status === "done" ? "✓" : m.status === "skipped" ? "skipped" : "missed";
-      return `<span class="person closer ${esc(m.status)}">${label} ${esc(name)} ${fmtTime(m.at_et)}</span>`;
+      return `<span class="person closer ${esc(m.status)}">${label} ${esc(name)} ${fmtTime(m.at_et)}${m.marked_by ? ` (by ${esc(m.marked_by)})` : ""}</span>`;
     }
     if (name === me && !m && task.kind !== "placeholder") {
       return `<button class="person me" data-mark="done" data-task="${esc(task.task_id)}">${esc(name)}</button>`;
+    }
+    if (state.admin && !m && task.kind !== "placeholder") {   // admin: mark done for anyone
+      return `<button class="person" data-mark="done" data-as="${esc(name)}" data-task="${esc(task.task_id)}" title="Mark done for ${esc(name)}">${esc(name)}</button>`;
     }
     return `<span class="person">${esc(name)}</span>`;
   }).join("");
@@ -379,6 +457,7 @@ function render() {
     `<span class="pill">${open.length} open</span>` +
     `<span class="pill ok">${done} done</span>`;
   document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === tab));
+  document.body.classList.toggle("wide", tab === "schedule" || (tab === "news" && deskView === "columns"));
   const openNews = tasks.filter((t) => t.kind === "news" && !statusOf(t)).length;
   $("newsCount").textContent = openNews ? ` (${openNews})` : "";
 
@@ -395,15 +474,30 @@ function render() {
     html += taskList(mine.filter((t) => t.kind !== "placeholder"));
     if (news.length) html += `<h2>News</h2>` + news.map((t) => `<div class="empty">${esc(t.name)}</div>`).join("");
   } else if (tab === "news") {
-    const news = tasks.filter((t) => t.kind === "news");
-    html = news.length
-      ? taskList(news)
-      : `<div class="empty" style="margin-top:16px">No news tasks today. Injury-report items that don't match our grid appear here as tasks, due 15 minutes after they're seen.</div>`;
-    html += feedSection();
+    html = `<div class="bar"><span class="seg"><button data-deskview="list" class="${deskView === "list" ? "on" : ""}">List</button>
+      <button data-deskview="columns" class="${deskView === "columns" ? "on" : ""}">Columns by sport</button></span></div>`;
+    if (deskView === "columns") {
+      html += newsDesk();
+    } else {
+      const news = tasks.filter((t) => t.kind === "news");
+      html += news.length
+        ? taskList(news)
+        : `<div class="empty" style="margin-top:16px">No news tasks today. Injury-report items that don't match our grid appear here as tasks, due 15 minutes after they're seen.</div>`;
+      html += feedSection();
+    }
+  } else if (tab === "schedule") {
+    // built once; refreshes of the task data don't redraw it (keeps scroll position)
+    if (!$("schedBody")) { $("main").innerHTML = scheduleShell(); renderSchedule(); }
+    return;
   } else {
     html = scoreTable("Today", state.stats?.today?.people) + scoreTable(`All time (${state.stats?.all?.days || 0} days)`, state.stats?.all?.people);
   }
+  const scrolls = {};   // keep each news column's scroll position across refreshes
+  document.querySelectorAll("[data-colsport]").forEach((c) => { scrolls[c.dataset.colsport] = c.scrollTop; });
+  const deskLeft = $("desk") ? $("desk").scrollLeft : 0;
   $("main").innerHTML = html;
+  document.querySelectorAll("[data-colsport]").forEach((c) => { c.scrollTop = scrolls[c.dataset.colsport] || 0; });
+  if ($("desk")) $("desk").scrollLeft = deskLeft;
 }
 
 // one delegated listener for every button on the board
@@ -413,9 +507,299 @@ document.addEventListener("click", (e) => {
   if (el.dataset.tab) { tab = el.dataset.tab; store.set("tab", tab); render(); }
   else if (el.dataset.sport) { sportFilter = el.dataset.sport; store.set("sport", sportFilter); render(); }
   else if (el.dataset.feedsport) { feedSport = el.dataset.feedsport; render(); }
-  else if (el.dataset.mark) { mark(el.dataset.task, el.dataset.mark); }
+  else if (el.dataset.mark) { mark(el.dataset.task, el.dataset.mark, el.dataset.as); }
   else if (el.dataset.action) { runAction(el.dataset.action, el.dataset.act); }
   else if (el.id === "toggleClosed") { showClosed = !showClosed; render(); }
+});
+
+// ---- schedule: timeline, day look-ahead, heat map --------------------------------
+// Data: op "schedule" (one day) and op "heat" (all days).  Loaded when the tab / day / heat map is opened and
+// kept for SCHED_CACHE_MS, so moving around costs no extra calls.  Times are ET.
+const SCHED_CACHE_MS = 60 * 60000;
+const PX_PER_HOUR = 96;
+const labelW = () => (window.innerWidth < 600 ? 84 : 120);   // frozen league column
+const SPORT_VAR = { Football: "football", Basketball: "basketball", Baseball: "baseball", Hockey: "hockey",
+  Soccer: "soccer", Golf: "golf", MMA: "mma", Tennis: "tennis" };   // others: grey
+const sched = { day: null, cache: {}, sel: null, heat: null, heatAt: 0, showHeat: store.get("showHeat") === "1",
+  metric: store.get("heatMetric") || "leagues", loading: false };
+const etFmt = new Intl.DateTimeFormat("en-US", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit",
+  hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+function etParts(d) {
+  const p = Object.fromEntries(etFmt.formatToParts(d).map((x) => [x.type, x.value]));
+  return { date: `${p.year}-${p.month}-${p.day}`, min: Number(p.hour) * 60 + Number(p.minute) };
+}
+const todayET = () => etParts(new Date()).date;
+function addDays(iso, n) { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+function dayLabel(iso) { return new Date(iso + "T12:00:00Z").toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" }); }
+function hourLabel(h) { const x = ((h % 24) + 24) % 24; return x === 0 ? "12 AM" : x === 12 ? "12 PM" : x < 12 ? `${x} AM` : `${x - 12} PM`; }
+// minutes from the viewed day's midnight ET (a 1 AM start the next day = 1500)
+function minsOn(day, iso) {
+  const p = etParts(new Date(iso));
+  if (p.date === day) return p.min;
+  if (p.date === addDays(day, 1)) return 1440 + p.min;
+  return p.date < day ? -1 : 99999;
+}
+function teamLine(e) {
+  if (e.kind === "card") return `${e.name}${e.main_event ? " — " + e.main_event : ""}${e.fight_count ? ` (${e.fight_count} fights)` : ""}`;
+  return e.away && e.home ? `${e.away} @ ${e.home}` : e.name || "";
+}
+
+async function loadSchedule(day, force = false) {
+  const hit = sched.cache[day];
+  if (!force && hit && Date.now() - hit.at < SCHED_CACHE_MS) return hit.data;
+  sched.loading = true;
+  try {
+    const data = await api({ op: "schedule", date: day });
+    sched.cache[day] = { at: Date.now(), data };
+    return data;
+  } finally { sched.loading = false; }
+}
+async function loadHeat(force = false) {
+  if (!force && sched.heat && Date.now() - sched.heatAt < SCHED_CACHE_MS) return sched.heat;
+  sched.heat = await api({ op: "heat" });
+  sched.heatAt = Date.now();
+  return sched.heat;
+}
+
+async function openDay(day) {
+  sched.day = day; sched.sel = null;
+  const el = $("schedBody");
+  if (el && !sched.cache[day]) el.innerHTML = `<div class="empty">Loading ${esc(dayLabel(day))}…</div>`;
+  try { await loadSchedule(day); } catch (err) { if ($("schedBody")) $("schedBody").innerHTML = `<div class="empty">Couldn't load: ${esc(err.message)}</div>`; return; }
+  renderSchedule();
+}
+
+function scheduleShell() {
+  if (!sched.day) sched.day = todayET();
+  return `<div class="bar">
+      <button class="small" data-sday="-1" title="Previous day">◀</button>
+      <span class="day" id="schedDay"></span>
+      <button class="small" data-sday="1" title="Next day">▶</button>
+      <button class="small" data-sday="today">Today</button>
+      <input type="date" id="schedPick">
+      <span style="flex:1"></span>
+      <button class="small" id="heatToggle"></button>
+    </div>
+    <div id="heatBox"></div>
+    <div id="schedBody"><div class="empty">Loading…</div></div>`;
+}
+
+function renderSchedule() {
+  const day = sched.day;
+  if (!$("schedBody")) return;
+  $("schedDay").textContent = dayLabel(day) + (day === todayET() ? " (today)" : "");
+  const hit = sched.cache[day];
+  const pick = $("schedPick");
+  pick.value = day;
+  if (hit && hit.data.last_day) pick.max = hit.data.last_day;
+  $("heatToggle").textContent = sched.showHeat ? "Hide heat map" : "Heat map";
+  renderHeat();
+  if (!hit) { openDay(day); return; }
+  const data = hit.data;
+  const events = data.events || [], slates = data.slates || [];
+  if (!events.length && !slates.length) {
+    $("schedBody").innerHTML = `<div class="empty">${data.found ? "Nothing scheduled." : "No schedule for this day yet."}
+      ${data.last_day ? `<br>Look-ahead runs to ${esc(dayLabel(data.last_day))}.` : ""}</div>` + coverageNote(data);
+    return;
+  }
+  // rows: one per league, ordered by first start / lock
+  const rows = {};
+  const mins = [];
+  for (const e of events) {
+    const m = minsOn(day, e.start_et); if (m < 0 || m > 2880) continue;
+    const r = rows[e.league] ||= { league: e.league, sport: e.sport, games: [], locks: [], first: m };
+    r.games.push({ ...e, m }); r.first = Math.min(r.first, m); mins.push(m);
+  }
+  for (const s of slates) {
+    const m = minsOn(day, s.lock_et); if (m < 0 || m > 2880) continue;
+    const r = rows[s.league] ||= { league: s.league, sport: (events.find((e) => e.league === s.league) || {}).sport || "", games: [], locks: [], first: m };
+    r.locks.push({ ...s, m }); r.first = Math.min(r.first, m); mins.push(m);
+  }
+  const startH = Math.min(8, Math.floor(Math.min(...mins) / 60));
+  const endH = Math.min(30, Math.max(24, Math.ceil(Math.max(...mins) / 60) + 3));
+  const width = (endH - startH) * PX_PER_HOUR;
+  const x = (m) => (m / 60 - startH) * PX_PER_HOUR;
+  let ticks = "", grid = "";
+  for (let h = startH; h < endH; h++) {
+    ticks += `<div class="tick" style="left:${x(h * 60)}px">${hourLabel(h)}</div>`;
+    grid += `<div class="grid-line" style="left:${x(h * 60)}px"></div>`;
+  }
+  const isToday = day === todayET();
+  const nowM = isToday ? etParts(new Date()).min : null;
+  const nowLine = nowM != null && nowM >= startH * 60 && nowM <= endH * 60
+    ? `<div class="now" style="left:${x(nowM) + labelW()}px"><span>now ${fmtTime(new Date().toISOString())}</span></div>` : "";
+  let body = "";
+  const ordered = Object.values(rows).sort((a, b) => a.first - b.first || a.league.localeCompare(b.league));
+  for (const r of ordered) {
+    // games grouped by start time -> one chip each; chips stacked in lanes so none overlap
+    const groups = {};
+    for (const g of r.games) (groups[g.m] ||= []).push(g);
+    const chips = Object.entries(groups).map(([m, gs]) => {
+      const label = gs.length === 1 ? teamLine(gs[0]) : `${fmtTime(gs[0].start_et)} · ${gs.length} games`;
+      return { m: Number(m), gs, label, w: Math.min(260, 18 + label.length * 6.6) };
+    }).sort((a, b) => a.m - b.m);
+    const lanes = [];
+    for (const c of chips) {
+      let lane = lanes.findIndex((end) => end + 4 <= x(c.m));
+      if (lane < 0) { lane = lanes.length; lanes.push(0); }
+      lanes[lane] = x(c.m) + c.w; c.lane = lane;
+    }
+    const top0 = r.locks.length ? 20 : 4;
+    const h = top0 + Math.max(1, lanes.length) * 26 + 4;
+    const color = `var(--sp-${SPORT_VAR[r.sport] || "other"})`;
+    const chipHtml = chips.map((c) => {
+      const key = `g|${r.league}|${c.m}`;
+      return `<div class="gchip ${sched.sel === key ? "sel" : ""}" data-sel="${esc(key)}" style="--c:${color};left:${x(c.m)}px;top:${top0 + c.lane * 26}px;max-width:${c.w}px"
+        data-tip="${esc(`${r.league} · ${fmtTime(c.gs[0].start_et)}\n` + c.gs.map(teamLine).join("\n"))}">${esc(c.label)}</div>`;
+    }).join("");
+    const lockGroups = {};
+    for (const l of r.locks) (lockGroups[l.m] ||= []).push(l);
+    const lockHtml = Object.entries(lockGroups).map(([m, ls]) => {
+      const key = `l|${r.league}|${m}`;
+      const def = ls.some((l) => l.default), sl = ls.some((l) => l.simlabs);
+      const tip = `${r.league} slate lock ${fmtTime(ls[0].lock_et)}\n` + ls.map((l) => `${l.site} ${l.name || l.type} (${l.slate_id})${l.default ? " · DEFAULT" : ""}${l.simlabs ? " · SimLabs" : ""}`).join("\n");
+      return `<div class="lock ${def ? "def" : ""} ${sl ? "sl" : ""}" data-sel="${esc(key)}" style="left:${x(Number(m))}px" data-tip="${esc(tip)}"></div>`;
+    }).join("");
+    body += `<div class="tl-row"><div class="tl-label"><span class="sw" style="background:${color}"></span>
+        <span>${esc(r.league)}<br><span class="cnt">${r.games.length} game${r.games.length === 1 ? "" : "s"}${r.locks.length ? ` · ${r.locks.length} lock${r.locks.length === 1 ? "" : "s"}` : ""}</span></span></div>
+      <div class="tl-track" style="width:${width}px;height:${h}px">${grid}${lockHtml}${chipHtml}</div></div>`;
+  }
+  const keep = $("tl") ? $("tl").scrollLeft : null;
+  $("schedBody").innerHTML = `<div class="tl" id="tl"><div class="tl-inner" style="width:${width + labelW()}px;--lw:${labelW()}px">
+      <div class="tl-axis"><div class="tl-label">ET</div><div class="tl-track" style="width:${width}px">${ticks}</div></div>
+      ${body}${nowLine}</div></div>
+    <div class="legend">
+      <span><i style="background:var(--sp-football)"></i>Football</span><span><i style="background:var(--sp-basketball)"></i>Basketball</span>
+      <span><i style="background:var(--sp-baseball)"></i>Baseball</span><span><i style="background:var(--sp-hockey)"></i>Hockey</span>
+      <span><i style="background:var(--sp-soccer)"></i>Soccer</span><span><i style="background:var(--sp-golf)"></i>Golf</span>
+      <span><i style="background:var(--sp-mma)"></i>MMA</span><span><i style="background:var(--sp-tennis)"></i>Tennis</span>
+      <span><i style="background:var(--sp-other)"></i>Other</span>
+      <span><i class="d"></i>slate lock</span><span><i class="d def"></i>default slate</span><span><b style="color:var(--accent)">SL</b> SimLabs</span>
+      <span>Chips sit at start time (game length not shown)</span>
+    </div>
+    <div id="schedDetail">${detailHtml(rows)}</div>` + coverageNote(data);
+  const tl = $("tl");
+  if (keep != null) tl.scrollLeft = keep;
+  else if (nowM != null) tl.scrollLeft = Math.max(0, x(nowM) - 200);
+  else if (mins.length) tl.scrollLeft = Math.max(0, x(Math.min(...mins)) - 40);
+}
+
+function coverageNote(data) {
+  const cov = data.coverage || {};
+  const keys = Object.keys(cov).sort();
+  if (!keys.length) return "";
+  return `<div class="legend">Core schedules run to: ${keys.map((k) => `${esc(k)} ${esc(cov[k].slice(5))}`).join(" · ")}</div>`;
+}
+
+function detailHtml(rows) {
+  if (!sched.sel) return `<div class="legend">Click a game chip or a lock ◆ for details.</div>`;
+  const [kind, league, m] = sched.sel.split("|");
+  const r = rows[league]; if (!r) return "";
+  if (kind === "g") {
+    const gs = r.games.filter((g) => String(g.m) === m);
+    return `<div class="detail"><h3>${esc(league)} · ${fmtTime(gs[0]?.start_et)} · ${gs.length} game${gs.length === 1 ? "" : "s"}</h3><ul>`
+      + gs.map((g) => `<li>${esc(teamLine(g))}${g.broadcast ? ` <span class="note">(${esc(g.broadcast)})</span>` : ""}${g.status ? ` <span class="note">${esc(g.status)}</span>` : ""}</li>`).join("") + `</ul></div>`;
+  }
+  const ls = r.locks.filter((l) => String(l.m) === m);
+  return `<div class="detail"><h3>${esc(league)} slates locking ${fmtTime(ls[0]?.lock_et)}</h3><ul>`
+    + ls.map((l) => `<li>${esc(l.site)} · ${esc(l.name || l.type)} (${esc(l.slate_id)}) · ${l.game_count || 0} games${l.default ? " · <b>DEFAULT</b>" : ""}${l.simlabs ? " · SimLabs" : ""}</li>`).join("") + `</ul></div>`;
+}
+
+const HEAT_HOURS = Array.from({ length: 24 }, (_, i) => (i + 6) % 24);   // 6 AM .. 5 AM
+function heatValue(cell) {
+  if (!cell) return 0;
+  const [games, locks, leagues, tasks] = cell;
+  return sched.metric === "games" ? games : sched.metric === "work" ? locks + (tasks || 0) : leagues.length;
+}
+async function renderHeat() {
+  const box = $("heatBox"); if (!box) return;
+  if (!sched.showHeat) { box.innerHTML = ""; return; }
+  if (!sched.heat) {
+    box.innerHTML = `<div class="empty" style="margin-top:10px">Loading heat map…</div>`;
+    try { await loadHeat(); } catch (err) { box.innerHTML = `<div class="empty">Couldn't load heat map: ${esc(err.message)}</div>`; return; }
+  }
+  const hm = sched.heat;
+  const days = hm.days || [];
+  if (!days.length) { box.innerHTML = `<div class="empty" style="margin-top:10px">No look-ahead data yet (built once a day by the schedule job).</div>`; return; }
+  const vals = [];
+  for (const d of days) for (const h of HEAT_HOURS) { const v = heatValue((hm.heat[d] || {})[h]); if (v) vals.push(v); }
+  vals.sort((a, b) => a - b);
+  const q = (p) => vals.length ? vals[Math.min(vals.length - 1, Math.floor(p * vals.length))] : 1;
+  const cuts = [q(.2), q(.4), q(.6), q(.8), q(.95)];
+  const level = (v) => !v ? 0 : 1 + cuts.filter((c) => v > c).length;
+  const label = { leagues: "leagues starting or locking", games: "games starting", work: "slate locks + tasks due (tasks: today only)" }[sched.metric];
+  let html = `<div class="bar" style="margin-top:4px"><span class="seg">
+      <button data-metric="leagues" class="${sched.metric === "leagues" ? "on" : ""}">Leagues</button>
+      <button data-metric="games" class="${sched.metric === "games" ? "on" : ""}">Games</button>
+      <button data-metric="work" class="${sched.metric === "work" ? "on" : ""}">Locks + tasks</button></span>
+      <span class="legend" style="margin:0">Per ET hour: ${esc(label)}. Low <span class="scale">${[1, 2, 3, 4, 5, 6].map((i) => `<b style="background:var(--h${i})"></b>`).join("")}</span> High · click a cell to open that day</span></div>
+    <div class="heat"><table><thead><tr><th class="dl">Day</th>${HEAT_HOURS.map((h) => `<th>${hourLabel(h).replace(" ", "")}</th>`).join("")}</tr></thead><tbody>`;
+  for (const d of days) {
+    const row = hm.heat[d] || {};
+    html += `<tr class="${d === hm.today ? "today" : ""}"><th class="dl">${esc(dayLabel(d))}</th>` + HEAT_HOURS.map((h) => {
+      const cell = row[h]; const v = heatValue(cell);
+      const tip = cell ? `${dayLabel(d)} ${hourLabel(h)}\n${cell[2].length} league${cell[2].length === 1 ? "" : "s"}: ${cell[2].join(", ")}\n${cell[0]} games · ${cell[1]} locks${cell[3] != null ? ` · ${cell[3]} tasks due` : ""}` : `${dayLabel(d)} ${hourLabel(h)}: nothing`;
+      return `<td class="c l${level(v)}" data-hday="${d}" data-tip="${esc(tip)}">${v || ""}</td>`;
+    }).join("") + `</tr>`;
+  }
+  box.innerHTML = html + `</tbody></table></div>`;
+}
+
+// hover tooltips for chips, locks and heat cells (no network)
+document.addEventListener("mouseover", (e) => {
+  const t = e.target.closest("[data-tip]"); let tip = $("tip");
+  if (!t) { if (tip) tip.remove(); return; }
+  if (!tip) { tip = document.createElement("div"); tip.id = "tip"; tip.className = "tip"; document.body.appendChild(tip); }
+  tip.style.whiteSpace = "pre-line"; tip.textContent = t.dataset.tip;
+  const r = t.getBoundingClientRect();
+  tip.style.left = Math.min(window.innerWidth - 330, r.left) + "px";
+  tip.style.top = (r.bottom + 6 + 120 > window.innerHeight ? r.top - 8 - tip.offsetHeight : r.bottom + 6) + "px";
+});
+document.addEventListener("click", (e) => {
+  if (tab !== "schedule") return;
+  const sel = e.target.closest("[data-sel]");
+  if (sel) { sched.sel = sched.sel === sel.dataset.sel ? null : sel.dataset.sel; renderSchedule(); return; }
+  const cell = e.target.closest("[data-hday]");
+  if (cell) { openDay(cell.dataset.hday); $("schedBody").scrollIntoView({ behavior: "smooth", block: "start" }); return; }
+  const b = e.target.closest("button");
+  if (!b) return;
+  if (b.dataset.sday) openDay(b.dataset.sday === "today" ? todayET() : addDays(sched.day, Number(b.dataset.sday)));
+  else if (b.id === "heatToggle") { sched.showHeat = !sched.showHeat; store.set("showHeat", sched.showHeat ? "1" : "0"); renderSchedule(); }
+  else if (b.dataset.metric) { sched.metric = b.dataset.metric; store.set("heatMetric", sched.metric); renderHeat(); }
+});
+document.addEventListener("change", (e) => { if (e.target.id === "schedPick" && e.target.value) openDay(e.target.value); });
+
+// ---- news desk: one column per sport (X Pro style) --------------------------------
+const DESK_DEFAULT = ["NFL", "NBA", "CFB", "CBB", "NHL", "MLB", "PGA", "WNBA", "Soccer", "Tennis", "MMA"];
+let deskView = store.get("deskView") || "list";
+let deskSports = (() => { try { return JSON.parse(store.get("deskSports")) || null; } catch { return null; } })();
+function newsDesk() {
+  const tasks = state.tasks.filter((t) => t.kind === "news");
+  const feed = state.feed || [];
+  const seen = [...new Set([...tasks.map((t) => t.sport), ...feed.map((i) => i.sport)])];
+  const all = [...new Set([...DESK_DEFAULT, ...seen])];
+  const cols = (deskSports || DESK_DEFAULT).filter((s) => all.includes(s));
+  let html = `<div class="filters">${all.map((s) => `<button data-desksport="${esc(s)}" class="${cols.includes(s) ? "on" : ""}">${esc(s)}</button>`).join("")}</div><div class="desk" id="desk">`;
+  for (const s of cols) {
+    const ts = tasks.filter((t) => t.sport === s).sort((a, b) => (statusOf(a) ? 1 : 0) - (statusOf(b) ? 1 : 0) || String(b.due_et).localeCompare(String(a.due_et)));
+    const fs = feed.filter((i) => i.sport === s);
+    const open = ts.filter((t) => !statusOf(t)).length;
+    html += `<div class="col"><h3><span>${esc(s)}</span><span class="cnt">${open ? `<b style="color:var(--bad)">${open} to ack</b> · ` : ""}${fs.length} posts</span></h3><div class="body" data-colsport="${esc(s)}">`
+      + ts.map((t) => { const m = statusOf(t); return `<div class="news-task ${m ? "done" : ""}"><b>${esc(t.name)}</b>${t.note ? `<div class="note">${esc(t.note)}</div>` : ""}
+          <div class="row" style="margin-top:4px">${m ? `<span class="astatus ok">✓ ${esc(m.user)} ${fmtTime(m.at_et)}</span>` : `<button class="small" data-mark="done" data-task="${esc(t.task_id)}">Acknowledge</button>`}</div></div>`; }).join("")
+      + fs.map((i) => `<div class="feed"><div class="meta"><span class="due">${fmtTime(i.posted_et)}</span><span>@${esc(i.source)}${i.relayed_from ? ` · ${esc(i.relayed_from)}` : ""}</span></div>
+          <div class="ftext">${esc(i.text)}</div><a class="flink" href="${esc(i.url)}" target="_blank" rel="noopener noreferrer">open post</a></div>`).join("")
+      + (ts.length || fs.length ? "" : `<div class="empty" style="margin-top:8px">Nothing yet today.</div>`) + `</div></div>`;
+  }
+  return html + `</div>`;
+}
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.desksport) {
+    const cur = deskSports || DESK_DEFAULT.slice();
+    deskSports = cur.includes(b.dataset.desksport) ? cur.filter((s) => s !== b.dataset.desksport) : [...cur, b.dataset.desksport];
+    store.set("deskSports", JSON.stringify(deskSports)); render();
+  } else if (b.dataset.deskview) { deskView = b.dataset.deskview; store.set("deskView", deskView); render(); }
 });
 
 // ---- start ----------------------------------------------------------------------
