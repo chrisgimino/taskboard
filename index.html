@@ -163,6 +163,15 @@
   .col .news-task { border-left: 3px solid var(--bad); background: var(--bad-bg); padding: 6px 8px; margin: 8px 0; border-radius: 6px; font-size: 13px; }
   .col .news-task.done { border-left-color: var(--ok); background: var(--ok-bg); opacity: .75; }
   .col .feed .ftext { font-size: 13px; }
+  dialog.modal { border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--ink); padding: 16px 18px;
+    width: min(520px, calc(100vw - 32px)); box-shadow: 0 12px 40px rgba(0,0,0,.3); }
+  dialog.modal::backdrop { background: rgba(0,0,0,.45); }
+  dialog.modal h3 { margin: 0 0 10px; font-size: 16px; }
+  dialog.modal label { display: block; font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+  dialog.modal input:not([type=checkbox]), dialog.modal textarea { display: block; width: 100%; margin-top: 3px; padding: 8px; font: inherit; font-size: 14px;
+    border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
+  dialog.modal .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  dialog.modal .chk { display: flex; gap: 8px; align-items: center; color: var(--ink); font-size: 14px; margin-top: 12px; }
   .hidden { display: none !important; }
 </style>
 </head>
@@ -188,7 +197,10 @@
           <div class="sub" id="subline"></div>
           <div class="sub hidden" id="paused"></div>
         </div>
-        <button class="linkbtn" id="signOut">Sign out</button>
+        <div style="display:flex;gap:12px;align-items:center">
+          <button class="linkbtn hidden" id="addTaskBtn">+ Add task</button>
+          <button class="linkbtn" id="signOut">Sign out</button>
+        </div>
       </div>
       <div class="summary" id="summary"></div>
       <nav id="tabs">
@@ -202,6 +214,37 @@
   </header>
   <main class="wrap" id="main"></main>
 </div>
+
+<dialog id="addTask" class="modal">
+  <form method="dialog" id="addTaskForm">
+    <h3>Add a one-time task</h3>
+    <label>Task<input id="atName" required maxlength="200" placeholder="What needs doing"></label>
+    <div class="two">
+      <label>Sport<input id="atSport" list="atSports" maxlength="20" placeholder="General"></label>
+      <label>Category<input id="atCat" maxlength="40" placeholder="One-time"></label>
+    </div>
+    <datalist id="atSports"></datalist>
+    <div class="two">
+      <label>Day<input id="atDate" type="date" required></label>
+      <label>Due time (ET, optional)<input id="atTime" type="time"></label>
+    </div>
+    <label>Note (optional)<textarea id="atNote" rows="2" maxlength="300"></textarea></label>
+    <div class="two">
+      <label>Link name<input id="atL1" maxlength="60" placeholder="e.g. NBA Sheet"></label>
+      <label>Link URL<input id="atU1" type="url" placeholder="https://"></label>
+    </div>
+    <div class="two">
+      <label>Link name<input id="atL2" maxlength="60"></label>
+      <label>Link URL<input id="atU2" type="url" placeholder="https://"></label>
+    </div>
+    <label class="chk"><input id="atCrit" type="checkbox"> Critical (shows in red at the top)</label>
+    <div class="err" id="atErr"></div>
+    <div class="row" style="justify-content:flex-end">
+      <button type="button" class="small" id="atCancel">Cancel</button>
+      <button type="submit" class="action" id="atSave">Add task</button>
+    </div>
+  </form>
+</dialog>
 
 <script>
 // ---- configuration -------------------------------------------------------------
@@ -385,7 +428,8 @@ function taskCard(task) {
     ? `<button class="small" data-mark="open" data-task="${esc(task.task_id)}">Reopen</button>`
     : task.kind === "placeholder" ? ""
     : `<button class="small" data-mark="skipped" data-task="${esc(task.task_id)}">Skip</button>
-       <button class="small" data-mark="missed" data-task="${esc(task.task_id)}">Missed</button>`;
+       <button class="small" data-mark="missed" data-task="${esc(task.task_id)}">Missed</button>`
+      + (state.admin && task.def_id === "adhoc" ? ` <button class="small" data-remove="${esc(task.task_id)}">Remove</button>` : "");
   return `<div class="${classes.join(" ")}">
     <div class="meta">
       <span class="due">${task.due_et ? fmtTime(task.due_et) : "no due time"}</span>
@@ -457,6 +501,7 @@ function render() {
     `<span class="pill ${crit ? "bad" : ""}">${crit} critical</span>` +
     `<span class="pill">${open.length} open</span>` +
     `<span class="pill ok">${done} done</span>`;
+  $("addTaskBtn").classList.toggle("hidden", !state.admin);
   document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === tab));
   document.body.classList.toggle("wide", tab === "schedule" || (tab === "sport" && deskView === "columns"));
   const openNews = tasks.filter((t) => t.kind === "news" && !statusOf(t)).length;
@@ -509,6 +554,7 @@ document.addEventListener("click", (e) => {
   else if (el.dataset.feedsport) { feedSport = el.dataset.feedsport; render(); }
   else if (el.dataset.mark) { mark(el.dataset.task, el.dataset.mark, el.dataset.as); }
   else if (el.dataset.action) { runAction(el.dataset.action, el.dataset.act); }
+  else if (el.dataset.remove) { removeTask(el.dataset.remove); }
   else if (el.id === "toggleClosed") { showClosed = !showClosed; render(); }
 });
 
@@ -800,6 +846,35 @@ document.addEventListener("click", (e) => {
     store.set("deskHidden", JSON.stringify(deskHidden)); render();
   } else if (b.dataset.deskview) { deskView = b.dataset.deskview; store.set("deskView", deskView); render(); }
 });
+
+// ---- admin: one-time tasks (modal) ------------------------------------------------
+function openAddTask() {
+  const sports = [...new Set([...(state.tasks || []).map((t) => t.sport), "General", "NFL", "NBA", "CFB", "CBB", "NHL", "MLB", "PGA", "WNBA", "Soccer", "Tennis", "MMA", "F1"])].sort();
+  $("atSports").innerHTML = sports.map((x) => `<option value="${esc(x)}">`).join("");
+  $("addTaskForm").reset();
+  $("atDate").value = state.date || todayET();
+  $("atErr").textContent = "";
+  $("addTask").showModal();
+  $("atName").focus();
+}
+$("addTaskBtn").addEventListener("click", openAddTask);
+$("atCancel").addEventListener("click", () => $("addTask").close());
+$("addTaskForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const links = [[$("atL1").value, $("atU1").value], [$("atL2").value, $("atU2").value]]
+    .filter(([, u]) => u.trim()).map(([l, u]) => ({ label: l.trim() || u.trim(), url: u.trim() }));
+  $("atSave").disabled = true;
+  try {
+    await api({ op: "add_task", name: $("atName").value, sport: $("atSport").value || "General", category: $("atCat").value,
+      date: $("atDate").value, time: $("atTime").value, note: $("atNote").value, critical: $("atCrit").checked, links });
+    $("addTask").close();
+    load();
+  } catch (err) { $("atErr").textContent = err.message; }
+  finally { $("atSave").disabled = false; }
+});
+async function removeTask(taskId) {
+  try { await api({ op: "remove_task", task_id: taskId, date: state.date }); load(); } catch (err) { $("subline").textContent = err.message; }
+}
 
 // ---- start ----------------------------------------------------------------------
 // Refresh rules (Chris, 2026-11-02): only while the board is on screen; pause after IDLE_MS with no
