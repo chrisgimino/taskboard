@@ -57,6 +57,9 @@
   .name { font-weight: 600; margin: 4px 0 2px; }
   .note { font-size: 13px; color: var(--muted); }
   .res { font-size: 13px; color: var(--muted); }
+  .feed { border-top: 1px solid var(--line, rgba(127,127,127,.25)); padding: 10px 2px; }
+  .feed .ftext { margin: 4px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .feed .flink { font-size: 13px; color: var(--accent); }
   .res a { color: var(--accent); }
   .people { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .person { border: 1px solid var(--line); background: transparent; color: var(--muted);
@@ -317,6 +320,25 @@ function scoreTable(title, people) {
     + `</tbody></table>`;
 }
 
+let feedSport = "All";
+function feedSection() {
+  const items = state.feed || [];
+  const sports = ["All", ...new Set(items.map((i) => i.sport))];
+  if (!sports.includes(feedSport)) feedSport = "All";
+  const shown = items.filter((i) => feedSport === "All" || i.sport === feedSport);
+  let html = `<h2>Feed <span class="note">(${shown.length})</span></h2>`;
+  if (sports.length > 2) {
+    html += `<div class="filters">${sports.map((s) => `<button data-feedsport="${esc(s)}" class="${s === feedSport ? "on" : ""}">${esc(s)}</button>`).join("")}</div>`;
+  }
+  if (!shown.length) return html + `<div class="empty">No feed posts yet today.</div>`;
+  return html + shown.map((i) => `<div class="feed">
+      <div class="meta"><span class="due">${fmtTime(i.posted_et)}</span><span class="chip">${esc(i.sport)}</span>
+        <span>@${esc(i.source)}${i.relayed_from ? ` · ${esc(i.relayed_from)}` : ""}</span></div>
+      <div class="ftext">${esc(i.text)}</div>
+      <a class="flink" href="${esc(i.url)}" target="_blank" rel="noopener noreferrer">open post</a>
+    </div>`).join("");
+}
+
 function render() {
   if (!state) return;
   $("subline").textContent = `${fmtDate(state.now_et)} · signed in as ${state.user} · updated ${fmtTime(new Date().toISOString())}`;
@@ -350,7 +372,8 @@ function render() {
     const news = tasks.filter((t) => t.kind === "news");
     html = news.length
       ? taskList(news)
-      : `<div class="empty" style="margin-top:16px">No news items today. Official injury-report status changes appear here as tasks, due 15 minutes after they're seen.</div>`;
+      : `<div class="empty" style="margin-top:16px">No news tasks today. Injury-report items that don't match our grid appear here as tasks, due 15 minutes after they're seen.</div>`;
+    html += feedSection();
   } else {
     html = scoreTable("Today", state.stats?.today?.people) + scoreTable(`All time (${state.stats?.all?.days || 0} days)`, state.stats?.all?.people);
   }
@@ -363,6 +386,7 @@ document.addEventListener("click", (e) => {
   if (!el) return;
   if (el.dataset.tab) { tab = el.dataset.tab; store.set("tab", tab); render(); }
   else if (el.dataset.sport) { sportFilter = el.dataset.sport; store.set("sport", sportFilter); render(); }
+  else if (el.dataset.feedsport) { feedSport = el.dataset.feedsport; render(); }
   else if (el.dataset.mark) { mark(el.dataset.task, el.dataset.mark); }
   else if (el.dataset.action) { runAction(el.dataset.action); }
   else if (el.id === "toggleClosed") { showClosed = !showClosed; render(); }
