@@ -154,11 +154,12 @@
   .scale { display: inline-flex; gap: 2px; align-items: center; }
   .scale b { width: 18px; height: 10px; border-radius: 2px; display: inline-block; }
   .desk { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 8px; margin-top: 10px; }
-  .col { flex: 0 0 330px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; display: flex; flex-direction: column;
+  .col { flex: 0 0 360px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; display: flex; flex-direction: column;
     max-height: calc(100vh - 230px); }
   .col h3 { margin: 0; padding: 8px 12px; font-size: 14px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; }
   .col h3 .cnt { color: var(--muted); font-weight: 400; }
-  .col .body { overflow-y: auto; padding: 0 12px 8px; }
+  .col .body { overflow-y: auto; padding: 0 10px 8px; }
+  .col .body h2 { margin: 12px 0 6px; }
   .col .news-task { border-left: 3px solid var(--bad); background: var(--bad-bg); padding: 6px 8px; margin: 8px 0; border-radius: 6px; font-size: 13px; }
   .col .news-task.done { border-left-color: var(--ok); background: var(--ok-bg); opacity: .75; }
   .col .feed .ftext { font-size: 13px; }
@@ -457,7 +458,7 @@ function render() {
     `<span class="pill">${open.length} open</span>` +
     `<span class="pill ok">${done} done</span>`;
   document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === tab));
-  document.body.classList.toggle("wide", tab === "schedule" || (tab === "news" && deskView === "columns"));
+  document.body.classList.toggle("wide", tab === "schedule" || (tab === "sport" && deskView === "columns"));
   const openNews = tasks.filter((t) => t.kind === "news" && !statusOf(t)).length;
   $("newsCount").textContent = openNews ? ` (${openNews})` : "";
 
@@ -465,26 +466,25 @@ function render() {
   const work = tasks.filter((t) => t.kind !== "placeholder");
   if (tab === "all") {
     html = work.length ? taskList(work) : `<div class="empty" style="margin-top:16px">No tasks for today yet.</div>`;
+  } else if (tab === "sport" && deskView === "columns") {
+    html = `<div class="bar"><span class="seg"><button data-deskview="list">One sport</button>
+      <button data-deskview="columns" class="on">Columns</button></span></div>` + sportColumns(work);
   } else if (tab === "sport") {
+    html = `<div class="bar"><span class="seg"><button data-deskview="list" class="on">One sport</button>
+      <button data-deskview="columns">Columns</button></span></div>`;
     const sports = [...new Set(work.map((t) => t.sport))].sort();
     if (!sports.includes(sportFilter)) sportFilter = sports[0] || "";
-    html = `<div class="filters">${sports.map((s) => `<button data-sport="${esc(s)}" class="${s === sportFilter ? "on" : ""}">${esc(s)}</button>`).join("")}</div>`;
+    html += `<div class="filters">${sports.map((s) => `<button data-sport="${esc(s)}" class="${s === sportFilter ? "on" : ""}">${esc(s)}</button>`).join("")}</div>`;
     const mine = tasks.filter((t) => t.sport === sportFilter);
     const news = mine.filter((t) => t.kind === "placeholder");
     html += taskList(mine.filter((t) => t.kind !== "placeholder"));
     if (news.length) html += `<h2>News</h2>` + news.map((t) => `<div class="empty">${esc(t.name)}</div>`).join("");
   } else if (tab === "news") {
-    html = `<div class="bar"><span class="seg"><button data-deskview="list" class="${deskView === "list" ? "on" : ""}">List</button>
-      <button data-deskview="columns" class="${deskView === "columns" ? "on" : ""}">Columns by sport</button></span></div>`;
-    if (deskView === "columns") {
-      html += newsDesk();
-    } else {
-      const news = tasks.filter((t) => t.kind === "news");
-      html += news.length
-        ? taskList(news)
-        : `<div class="empty" style="margin-top:16px">No news tasks today. Injury-report items that don't match our grid appear here as tasks, due 15 minutes after they're seen.</div>`;
-      html += feedSection();
-    }
+    const news = tasks.filter((t) => t.kind === "news");
+    html = news.length
+      ? taskList(news)
+      : `<div class="empty" style="margin-top:16px">No news tasks today. Injury-report items that don't match our grid appear here as tasks, due 15 minutes after they're seen.</div>`;
+    html += feedSection();
   } else if (tab === "schedule") {
     // built once; refreshes of the task data don't redraw it (keeps scroll position)
     if (!$("schedBody")) { $("main").innerHTML = scheduleShell(); renderSchedule(); }
@@ -769,36 +769,35 @@ document.addEventListener("click", (e) => {
 });
 document.addEventListener("change", (e) => { if (e.target.id === "schedPick" && e.target.value) openDay(e.target.value); });
 
-// ---- news desk: one column per sport (X Pro style) --------------------------------
-const DESK_DEFAULT = ["NFL", "NBA", "CFB", "CBB", "NHL", "MLB", "PGA", "WNBA", "Soccer", "Tennis", "MMA"];
+// ---- By Sport -> Columns: one column per sport (X Pro style), every task + that sport's news feed ----------
 let deskView = store.get("deskView") || "list";
-let deskSports = (() => { try { return JSON.parse(store.get("deskSports")) || null; } catch { return null; } })();
-function newsDesk() {
-  const tasks = state.tasks.filter((t) => t.kind === "news");
+let deskHidden = (() => { try { return JSON.parse(store.get("deskHidden")) || []; } catch { return []; } })();   // columns turned off
+function sportColumns(work) {
   const feed = state.feed || [];
-  const seen = [...new Set([...tasks.map((t) => t.sport), ...feed.map((i) => i.sport)])];
-  const all = [...new Set([...DESK_DEFAULT, ...seen])];
-  const cols = (deskSports || DESK_DEFAULT).filter((s) => all.includes(s));
-  let html = `<div class="filters">${all.map((s) => `<button data-desksport="${esc(s)}" class="${cols.includes(s) ? "on" : ""}">${esc(s)}</button>`).join("")}</div><div class="desk" id="desk">`;
+  const all = [...new Set([...work.map((t) => t.sport), ...feed.map((i) => i.sport)])].sort();
+  const cols = all.filter((s) => !deskHidden.includes(s));   // every sport with tasks today unless turned off
+  let html = `<div class="filters">${all.map((s) => `<button data-desksport="${esc(s)}" class="${cols.includes(s) ? "on" : ""}">${esc(s)}</button>`).join("")}</div>`;
+  if (!all.length) return html + `<div class="empty">No tasks today.</div>`;
+  html += `<div class="desk" id="desk">`;
   for (const s of cols) {
-    const ts = tasks.filter((t) => t.sport === s).sort((a, b) => (statusOf(a) ? 1 : 0) - (statusOf(b) ? 1 : 0) || String(b.due_et).localeCompare(String(a.due_et)));
+    const ts = work.filter((t) => t.sport === s);
     const fs = feed.filter((i) => i.sport === s);
-    const open = ts.filter((t) => !statusOf(t)).length;
-    html += `<div class="col"><h3><span>${esc(s)}</span><span class="cnt">${open ? `<b style="color:var(--bad)">${open} to ack</b> · ` : ""}${fs.length} posts</span></h3><div class="body" data-colsport="${esc(s)}">`
-      + ts.map((t) => { const m = statusOf(t); return `<div class="news-task ${m ? "done" : ""}"><b>${esc(t.name)}</b>${t.note ? `<div class="note">${esc(t.note)}</div>` : ""}
-          <div class="row" style="margin-top:4px">${m ? `<span class="astatus ok">✓ ${esc(m.user)} ${fmtTime(m.at_et)}</span>` : `<button class="small" data-mark="done" data-task="${esc(t.task_id)}">Acknowledge</button>`}</div></div>`; }).join("")
-      + fs.map((i) => `<div class="feed"><div class="meta"><span class="due">${fmtTime(i.posted_et)}</span><span>@${esc(i.source)}${i.relayed_from ? ` · ${esc(i.relayed_from)}` : ""}</span></div>
-          <div class="ftext">${esc(i.text)}</div><a class="flink" href="${esc(i.url)}" target="_blank" rel="noopener noreferrer">open post</a></div>`).join("")
-      + (ts.length || fs.length ? "" : `<div class="empty" style="margin-top:8px">Nothing yet today.</div>`) + `</div></div>`;
+    const open = ts.filter((t) => !statusOf(t));
+    const late = open.filter((t) => t.kind === "critical" || isOverdue(t)).length;
+    html += `<div class="col"><h3><span>${esc(s)}</span><span class="cnt">${late ? `<b style="color:var(--bad)">${late} late/critical</b> · ` : ""}${open.length} open</span></h3>
+      <div class="body" data-colsport="${esc(s)}">${ts.length ? taskList(ts) : `<div class="empty" style="margin-top:8px">No tasks today.</div>`}`
+      + (fs.length ? `<h2>Feed (${fs.length})</h2>` + fs.map((i) => `<div class="feed"><div class="meta"><span class="due">${fmtTime(i.posted_et)}</span><span>@${esc(i.source)}${i.relayed_from ? ` · ${esc(i.relayed_from)}` : ""}</span></div>
+          <div class="ftext">${esc(i.text)}</div><a class="flink" href="${esc(i.url)}" target="_blank" rel="noopener noreferrer">open post</a></div>`).join("") : "")
+      + `</div></div>`;
   }
   return html + `</div>`;
 }
 document.addEventListener("click", (e) => {
   const b = e.target.closest("button"); if (!b) return;
   if (b.dataset.desksport) {
-    const cur = deskSports || DESK_DEFAULT.slice();
-    deskSports = cur.includes(b.dataset.desksport) ? cur.filter((s) => s !== b.dataset.desksport) : [...cur, b.dataset.desksport];
-    store.set("deskSports", JSON.stringify(deskSports)); render();
+    const sp = b.dataset.desksport;
+    deskHidden = deskHidden.includes(sp) ? deskHidden.filter((x) => x !== sp) : [...deskHidden, sp];
+    store.set("deskHidden", JSON.stringify(deskHidden)); render();
   } else if (b.dataset.deskview) { deskView = b.dataset.deskview; store.set("deskView", deskView); render(); }
 });
 
