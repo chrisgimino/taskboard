@@ -172,6 +172,9 @@
     border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
   dialog.modal .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   dialog.modal .chk { display: flex; gap: 8px; align-items: center; color: var(--ink); font-size: 14px; margin-top: 12px; }
+  dialog.modal ol.steps { margin: 0; padding-left: 22px; max-height: 60vh; overflow-y: auto; }
+  dialog.modal ol.steps li { margin: 6px 0; line-height: 1.4; font-size: 14px; }
+  dialog.modal ol.steps a, dialog.modal .res a { word-break: break-all; }
   .hidden { display: none !important; }
 </style>
 </head>
@@ -214,6 +217,13 @@
   </header>
   <main class="wrap" id="main"></main>
 </div>
+
+<dialog id="stepsModal" class="modal">
+  <h3 id="stepsTitle"></h3>
+  <ol class="steps" id="stepsList"></ol>
+  <div id="stepsRes"></div>
+  <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="small" id="stepsClose">Close</button></div>
+</dialog>
 
 <dialog id="addTask" class="modal">
   <form method="dialog" id="addTaskForm">
@@ -394,8 +404,23 @@ function resourceLinks(task) {
   return links.length ? `<div class="res">Resources: ${links.join(" · ")}</div>` : "";
 }
 
+// ---- steps pop-out: task.steps = ["step text (URLs become links)", ...] -------------
+const stepsById = {};
+function linkify(text) {
+  return esc(text).replace(/https?:\/\/[^\s<)]+/g, (u) => `<a href="${u}" target="_blank" rel="noopener noreferrer">${u}</a>`);
+}
+function openSteps(id) {
+  const task = stepsById[id];
+  if (!task) return;
+  $("stepsTitle").textContent = task.name;
+  $("stepsList").innerHTML = task.steps.map((st) => `<li>${linkify(st)}</li>`).join("");
+  $("stepsRes").innerHTML = resourceLinks(task);
+  $("stepsModal").showModal();
+}
+
 function taskCard(task) {
   const m = statusOf(task);
+  if (task.steps && task.steps.length) stepsById[task.task_id] = task;
   const overdue = isOverdue(task);
   const classes = ["task"];
   if (overdue) classes.push("overdue");
@@ -448,6 +473,7 @@ function taskCard(task) {
     <div class="name">${esc(task.name)}</div>
     ${task.note ? `<div class="note">${esc(task.note)}</div>` : ""}
     ${resourceLinks(task)}
+    ${task.steps && task.steps.length ? `<div class="row"><button class="small" data-steps="${esc(task.task_id)}">Steps (${task.steps.length})</button></div>` : ""}
     <div class="people">${people}</div>
     <div class="row">${actionBtn}${jobLine}${secondary}</div>
   </div>`;
@@ -861,6 +887,11 @@ function openAddTask() {
   $("atName").focus();
 }
 $("addTaskBtn").addEventListener("click", openAddTask);
+$("stepsClose").addEventListener("click", () => $("stepsModal").close());
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-steps]");
+  if (b) openSteps(b.dataset.steps);
+});
 $("atCancel").addEventListener("click", () => $("addTask").close());
 $("addTaskForm").addEventListener("submit", async (e) => {
   e.preventDefault();
