@@ -345,9 +345,10 @@ function isOverdue(task) {
 }
 
 // ---- actions --------------------------------------------------------------------
-async function mark(taskId, status, asUser) {
+async function mark(taskId, status, asUser, decision) {
   try {
-    const data = await api({ op: "mark", task_id: taskId, status, date: state.date, ...(asUser ? { as_user: asUser } : {}) });
+    const data = await api({ op: "mark", task_id: taskId, status, date: state.date, ...(asUser ? { as_user: asUser } : {}),
+                             ...(decision ? { decision } : {}) });
     state.marks = data.marks;
     state.stats = data.stats;
     render();
@@ -428,7 +429,14 @@ function taskCard(task) {
   if (m) classes.push("closed", m.status === "done" ? "done" : "");
   const me = state.user;
   const expired = m && m.status === "expired";
-  const people = expired ? `<span class="person">expired unmarked ${task.expires_et ? "at " + fmtTime(task.expires_et) : ""}</span>` : state.team.map((name) => {
+  // news alerts: a person approves or rejects the alert (Chris, 2026-11-09); Slack needs no approval
+  const approval = task.kind === "news" && !expired
+    ? (m && m.status !== "open"
+        ? `<span class="person closer ${m.decision === "rejected" ? "missed" : "done"}">${m.decision === "rejected" ? "✗ rejected" : "✓ approved"} by ${esc(m.user)} ${fmtTime(m.at_et)}</span>`
+        : `<button class="person me" data-mark="done" data-decision="approved" data-task="${esc(task.task_id)}">Approve</button>
+           <button class="person" data-mark="done" data-decision="rejected" data-task="${esc(task.task_id)}">Reject</button>`)
+    : null;
+  const people = approval !== null ? approval : expired ? `<span class="person">expired unmarked ${task.expires_et ? "at " + fmtTime(task.expires_et) : ""}</span>` : state.team.map((name) => {
     if (m && m.user === name) {
       const label = m.status === "done" ? "✓" : m.status === "skipped" ? "skipped" : "missed";
       return `<span class="person closer ${esc(m.status)}">${label} ${esc(name)} ${fmtTime(m.at_et)}${m.marked_by ? ` (by ${esc(m.marked_by)})` : ""}</span>`;
@@ -582,7 +590,7 @@ document.addEventListener("click", (e) => {
   if (el.dataset.tab) { tab = el.dataset.tab; store.set("tab", tab); render(); }
   else if (el.dataset.sport) { sportFilter = el.dataset.sport; store.set("sport", sportFilter); render(); }
   else if (el.dataset.feedsport) { feedSport = el.dataset.feedsport; render(); }
-  else if (el.dataset.mark) { mark(el.dataset.task, el.dataset.mark, el.dataset.as); }
+  else if (el.dataset.mark) { mark(el.dataset.task, el.dataset.mark, el.dataset.as, el.dataset.decision); }
   else if (el.dataset.action) { runAction(el.dataset.action, el.dataset.act); }
   else if (el.dataset.remove) { removeTask(el.dataset.remove); }
   else if (el.id === "toggleClosed") { showClosed = !showClosed; render(); }
