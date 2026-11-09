@@ -60,6 +60,9 @@
   .feed { border-top: 1px solid var(--line, rgba(127,127,127,.25)); padding: 10px 2px; }
   .feed .ftext { margin: 4px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
   .feed .flink { font-size: 13px; color: var(--accent); }
+  .nflrep { padding: 12px 14px; margin: 10px 0; }
+  .nflrep .rep-h { font-size: 14px; margin: 14px 0 6px; color: var(--accent); }
+  .nflrep .rep-l { font-size: 14px; padding: 5px 0; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
   .res a { color: var(--accent); }
   .people { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .person { border: 1px solid var(--line); background: transparent; color: var(--muted);
@@ -210,6 +213,7 @@
         <button data-tab="all">All Sports</button>
         <button data-tab="sport">By Sport</button>
         <button data-tab="news">News<span id="newsCount"></span></button>
+        <button data-tab="nflreports">NFL Reports</button>
         <button data-tab="schedule">Schedule</button>
         <button data-tab="score">Scoreboard</button>
       </nav>
@@ -568,6 +572,8 @@ function render() {
     if (news.length) html += `<h2>News</h2>` + news.map((t) => `<div class="empty">${esc(t.name)}</div>`).join("");
   } else if (tab === "news") {
     html = newsTab(tasks);
+  } else if (tab === "nflreports") {
+    html = nflReportsTab();
   } else if (tab === "schedule") {
     // built once; refreshes of the task data don't redraw it (keeps scroll position)
     if (!$("schedBody")) { $("main").innerHTML = scheduleShell(); renderSchedule(); }
@@ -916,6 +922,25 @@ $("addTaskForm").addEventListener("submit", async (e) => {
 });
 async function removeTask(taskId) {
   try { await api({ op: "remove_task", task_id: taskId, date: state.date }); load(); } catch (err) { $("subline").textContent = err.message; }
+}
+
+// ---- NFL Reports tab (Chris, 2026-11-09): formal NFL news reports + game-day inactives reports ----------
+function slackMd(t) {   // the reports use Slack markup: *bold*, _italic_
+  return esc(t).replace(/\*([^*\n]+)\*/g, "<b>$1</b>").replace(/(^|[\s(])_([^_\n]+)_(?=$|[\s).,])/g, "$1<i>$2</i>")
+    .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+}
+function nflReportsTab() {
+  const reps = state.nfl_reports || [];
+  if (!reps.length) return `<h2>NFL reports</h2><div class="empty">No NFL reports in the last 3 days.</div>`;
+  return `<h2>NFL reports</h2>` + reps.map((r) => `<div class="task nflrep">
+      <div class="meta"><span class="due">${fmtTime(r.posted_et)}</span>
+        <span class="chip">${r.kind === "inactives" ? "Inactives" : "Report"}</span></div>
+      <div class="ftext"><b>${slackMd(r.title || "")}</b></div>
+      <div class="note">${slackMd((r.head || "").replace(/^\S+\s+\*[^*]*\*\s*·?\s*/, ""))}</div>
+      ${(r.sections || []).map((sec) => `<h3 class="rep-h">${slackMd(sec.title)}</h3>` +
+        sec.lines.map((l) => `<div class="rep-l">${slackMd(l).replace(/\n/g, "<br>")}</div>`).join("")).join("")
+        || `<div class="empty">No new player news.</div>`}
+    </div>`).join("");
 }
 
 // ---- News tab: organized by sport (Chris, 2026-11-04) ------------------------------
