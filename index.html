@@ -719,6 +719,35 @@
     .rail { flex-wrap: wrap; height: auto !important; padding: 6px 0; row-gap: 6px; justify-content: center; }
     .netbar .hdr-actions { width: 100% !important; justify-content: center; margin: 0; gap: 18px !important; }
   }
+  /* Coverage tab */
+  .cov-sums { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 6px 0 10px; }
+  .cov-sum { background: var(--card); border: 1px solid var(--line); border-radius: 2px 10px 2px 10px; padding: 8px 10px; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+  .cov-sum b { font: 600 14px/1.2 var(--f-head); letter-spacing: .12em; text-transform: uppercase; width: 100%; color: var(--ink); }
+  .cov-sum span { font-size: 12px; color: var(--muted); }
+  .cov-filt { margin: 4px 0 10px; }
+  .cov-wrap { overflow-x: auto; }
+  table.cov { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.cov th, table.cov td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  table.cov th:first-child, table.cov td:first-child { position: sticky; left: 0; background: var(--card); z-index: 1; }
+  table.cov td { font-family: var(--f-body) !important; }
+  table.cov .cov-g { font-family: var(--f-mono) !important; color: var(--muted); }
+  table.cov tr.cov-wk td { background: var(--chip) !important; color: var(--muted) !important; font: 500 9px/1 var(--f-head) !important; letter-spacing: .24em; text-transform: uppercase; padding: 8px 10px; }
+  table.cov tr.cov-today td { box-shadow: inset 0 1px 0 var(--accent), inset 0 -1px 0 var(--accent); }
+  table.cov tr.cov-today td:first-child { box-shadow: inset 3px 0 0 var(--accent), inset 0 1px 0 var(--accent), inset 0 -1px 0 var(--accent); }
+  table.cov tr.cov-off td { opacity: .45; }
+  .cov-p { display: inline-block; padding: 2px 9px; border-radius: 999px; font-weight: 600; font-size: 12px; border: 1px solid var(--line); }
+  .cov-kyle { color: #46d3e6; border-color: rgba(70,211,230,.5); }
+  .cov-jim { color: #f2b45a; border-color: rgba(242,180,90,.5); }
+  .cov-tim { color: #a99bff; border-color: rgba(169,155,255,.5); }
+  [data-theme="light"] .cov-kyle { color: #007f99; } [data-theme="light"] .cov-jim { color: #9a5a00; } [data-theme="light"] .cov-tim { color: #5a48c9; }
+  .cov-gap { color: var(--bad); font-weight: 600; font-size: 12px; }
+  .cov-tbd { font-family: var(--f-body); font-size: 11px; color: var(--muted); }
+  .cov-rules { margin: 12px 0 30px; color: var(--muted); font-size: 12px; }
+  .cov-rules summary { cursor: pointer; }
+  @media (max-width: 600px) {
+    .cov-sums { grid-template-columns: 1fr; gap: 6px; }
+    table.cov th, table.cov td { padding: 6px 7px; font-size: 12px; }
+  }
   .hidden { display: none !important; }
 </style>
 </head>
@@ -778,6 +807,7 @@
         <button data-tab="news">News<span id="newsCount"></span></button>
         <button data-tab="nflreports">NFL Reports</button>
         <button data-tab="schedule">Schedule</button>
+        <button data-tab="coverage">Coverage</button>
         <button data-tab="score">Scoreboard</button>
         
       </nav>
@@ -1214,6 +1244,8 @@ function render() {
     html = newsTab(tasks);
   } else if (tab === "nflreports") {
     html = nflReportsTab();
+  } else if (tab === "coverage") {
+    html = coverageTab();
   } else if (tab === "schedule") {
     // built once; refreshes of the task data don't redraw it (keeps scroll position)
     if (!$("schedBody")) { $("main").innerHTML = scheduleShell(); renderSchedule(); }
@@ -1573,6 +1605,57 @@ function slackMd(t) {   // the reports use Slack markup: *bold*, _italic_
   return esc(t).replace(/\*([^*\n]+)\*/g, "<b>$1</b>").replace(/(^|[\s(])_([^_\n]+)_(?=$|[\s).,])/g, "$1<i>$2</i>")
     .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
 }
+// ---- Coverage (Chris, 2026-11-12): staff schedule from s3://rg-gimino/board/coverage/<sport>.json ----
+let covWho = store.get("covWho") || "All";
+let covPast = false;
+function coverageTab() {
+  const c = (state.coverage || {}).nba;
+  if (!c) return `<div class="empty">No coverage schedule saved yet</div>`;
+  const today = state.date;
+  const people = ["Kyle", "Jim", "Tim"];
+  const count = (p, f) => c.days.filter((d) => f(d) && (d.night === p || d.day === p)).length;
+  const isWknd = (d) => [0, 6].includes(new Date(d.date + "T12:00:00Z").getUTCDay());
+  const sum = people.map((p) => `<div class="cov-sum"><b>${p}</b>
+      <span>${count(p, () => true)} shifts</span><span>${c.days.filter((d) => d.night === p).length} nights</span>
+      <span>${c.days.filter((d) => d.day === p).length} days</span><span>${count(p, isWknd)} weekend</span></div>`).join("");
+  const gaps = c.days.filter((d) => d.gap).length;
+  const filt = ["All", ...people, "Gaps"].map((w) => `<button data-covwho="${w}" class="${w === covWho ? "on" : ""}">${w === "Gaps" ? `Gaps (${gaps})` : w}</button>`).join("");
+  // weeks run Mon-Sun
+  const weekOf = (iso) => { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return d.toISOString().slice(0, 10); };
+  const thisWeek = weekOf(today);
+  let rows = "", lastWeek = "", hidden = 0;
+  for (const d of c.days) {
+    const wk = weekOf(d.date);
+    if (!covPast && wk < thisWeek) { hidden++; continue; }
+    const hit = covWho === "All" || (covWho === "Gaps" ? d.gap : (d.night === covWho || d.day === covWho));
+    if (!hit) continue;
+    if (wk !== lastWeek) {
+      lastWeek = wk;
+      const lbl = new Date(wk + "T12:00:00Z").toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric" });
+      rows += `<tr class="cov-wk"><td colspan="4">Week of ${lbl}</td></tr>`;
+    }
+    const dt = new Date(d.date + "T12:00:00Z");
+    const dl = dt.toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short", month: "numeric", day: "numeric" });
+    const g = d.games_note ? `<span class="cov-tbd">Cup TBD</span>` : (d.games || "");
+    const cell = (p) => p ? `<span class="cov-p cov-${p.toLowerCase()}">${p}</span>` : "";
+    rows += `<tr class="${d.date === today ? "cov-today" : ""} ${isWknd(d) ? "cov-we" : ""} ${!d.games && !d.games_note ? "cov-off" : ""}">
+      <td>${dl}</td><td class="cov-g">${g}</td><td>${cell(d.night)}</td>
+      <td>${d.gap ? `<span class="cov-gap">No one</span>` : cell(d.day)}</td></tr>`;
+  }
+  const first = c.days[0].date, last = c.days[c.days.length - 1].date;
+  const fmt = (iso) => new Date(iso + "T12:00:00Z").toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric" });
+  return `<h2>${esc(c.title || "Coverage")} · ${fmt(first)} – ${fmt(last)}</h2>
+    <div class="cov-sums">${sum}</div>
+    <div class="filters cov-filt">${filt}${hidden || covPast ? `<button data-covpast="1" class="${covPast ? "on" : ""}">${covPast ? "Hide past" : `Show past`}</button>` : ""}</div>
+    <div class="cov-wrap"><table class="cov"><thead><tr><th>Date</th><th>Games</th><th>Night</th><th>Day</th></tr></thead><tbody>${rows || `<tr><td colspan="4">Nothing to show</td></tr>`}</tbody></table></div>
+    <details class="cov-rules"><summary>Rules</summary><ul>${(c.rules || []).map((r) => `<li>${esc(r)}</li>`).join("")}</ul></details>`;
+}
+document.addEventListener("click", (e) => {
+  const w = e.target.closest("[data-covwho]");
+  if (w) { covWho = w.dataset.covwho; store.set("covWho", covWho); render(); return; }
+  if (e.target.closest("[data-covpast]")) { covPast = !covPast; render(); }
+});
+
 function nflReportsTab() {
   const reps = state.nfl_reports || [];
   if (!reps.length) return `<h2>NFL reports</h2><div class="empty">No NFL reports in the last 3 days.</div>`;
