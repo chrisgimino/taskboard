@@ -2228,7 +2228,7 @@ function parlaySub(p) {
   return base + `<span class="chk bad">Checked ${tET(n.t)}: ${why}. Pass the full parlay; the legs still good have their own links, or bet them together.</span>`;
 }
 function renderParlay() {
-  const el = $("parBoard"), slots = (S.index?.best_bets?.slots || []).slice().reverse(), sec0 = SEC();
+  const el = $("parBoard"), slots = liveSlots().slice().reverse(), sec0 = SEC();
   const sg = S.book ? (sec0?.sgp_books?.[S.book] || (sec0?.sgp?.book === S.book ? sec0.sgp : null)) : sec0?.sgp;   // book picker: that book's own
   const parOf = s => { const sm = s.sims?.[SIMKEY]; return !S.book ? sm?.parlay : sm?.by_book ? sm.by_book[S.book]?.parlay : (sm?.parlay?.book === S.book ? sm.parlay : null); };
   const pars = slots.map(s => [s.slot, parOf(s)]).filter(([, p]) => p);
@@ -2431,20 +2431,37 @@ function etNow() {   // seconds since midnight ET, from the browser's clock
     .formatToParts(new Date()).filter(x => x.type !== "literal").map(x => [x.type, +x.value]));
   return p.hour * 3600 + p.minute * 60 + p.second;
 }
+function todayET() { return new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(new Date()); }   // YYYY-MM-DD
+const relOf = lab => { const [h, m] = String(lab).split(":").map(Number); return h * 3600 + m * 60; };
+// slots are made ~20 min before their release time (nightly BB_LEAD_MIN): today's slate shows a slot from its release time on
+function liveSlots() { const bb = S.index?.best_bets, s = bb?.slots || []; if (bb?.date !== todayET()) return s; const t = etNow(); return s.filter(x => relOf(x.slot) <= t); }
+function dropState() {   // releases passed today, and whether the latest (within 10 min) is still missing from the data
+  const t = etNow(), past = DROPS.filter(([h, m]) => h * 3600 + m * 60 <= t), ld = past[past.length - 1];
+  if (!ld) return { n: 0, missing: false };
+  const lab = `${ld[0]}:${String(ld[1]).padStart(2, "0")}`, bb = S.index?.best_bets;
+  const have = bb?.date === todayET() && (bb.slots || []).some(s => s.slot === lab);
+  return { n: past.length, missing: t - (ld[0] * 3600 + ld[1] * 60) < 600 && !have };
+}
 function nextDrop() {
   const t = etNow(), d = DROPS.find(([h, m]) => h * 3600 + m * 60 > t);
   return d ? { secs: d[0] * 3600 + d[1] * 60 - t, label: d[2] + " ET", tomorrow: false } : { secs: 86400 - t + 11 * 3600 + 1800, label: "11:30 AM ET tomorrow", tomorrow: true };
 }
 const hms = x => { const h = Math.floor(x / 3600), m = Math.floor(x % 3600 / 60), sec = x % 60; return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(sec).padStart(2, "0"); };
 function cdHTML(what) {
-  const n = nextDrop(), last = etNow() - (DROPS.filter(([h, m]) => h * 3600 + m * 60 <= etNow()).map(([h, m]) => h * 3600 + m * 60).pop() ?? -1e9);
-  const fresh = last >= 0 && last < 600;   // a release takes a few minutes to run and push
+  const n = nextDrop(), fresh = dropState().missing;   // past the release time and its picks not in yet
   return `<div class="cdown" data-cd="${what}"><span class="cd-l">${fresh ? `${esc(what)} releasing now` : `Next ${esc(what)}`}</span>
     <span class="cd-t">${fresh ? "refresh in a few min" : hms(n.secs)}</span><span class="cd-w">${fresh ? "" : esc(n.label)}</span></div>`;
 }
-setInterval(() => { document.querySelectorAll("[data-cd]").forEach(el => { if (el.offsetParent) el.outerHTML = cdHTML(el.dataset.cd); }); }, 1000);
+let dropsSeen = null;
+setInterval(() => {
+  const ds = dropState();
+  if (dropsSeen !== null && ds.n !== dropsSeen && (S.view === "best" || S.view === "parlay")) renderView();   // release time: show the slot now
+  dropsSeen = ds.n;
+  if (ds.missing && Date.now() - lastRefresh > 60 * 1000) refreshData();   // late: look every minute
+  document.querySelectorAll("[data-cd]").forEach(el => { if (el.offsetParent) el.outerHTML = cdHTML(el.dataset.cd); });
+}, 1000);
 function renderBest() {
-  const el = $("bestBoard"), bb = S.index?.best_bets, slots = (bb?.slots || []).slice().reverse();
+  const el = $("bestBoard"), bb = S.index?.best_bets, slots = liveSlots().slice().reverse();
   if (!slots.length) { el.innerHTML = `<div class="lcol" style="height:100%"><h3>Today's best bets</h3>${cdHTML("best bets")}<div class="lnote">3–4 picks at 11:30 AM, 3:30 and 5:30 PM ET from the whole slate.</div></div>`; return; }
   el.innerHTML = `<div class="lcol" style="height:100%"><h3>Today's best bets<small>${bkTag()}3–4 picks at 11:30 AM, 3:30 and 5:30 PM ET from the whole slate · lines re-checked every hour</small></h3>${cdHTML("best bets")}<ol>` + slots.map(s => {
     const sm = s.sims?.[SIMKEY], bw = S.book && sm?.by_book ? sm.by_book[S.book] || {} : null;   // book picker: that book's own picks
