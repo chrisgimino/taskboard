@@ -373,6 +373,37 @@
   .ck-l { font-weight: 600; } .ck-d { font: 500 12px/1 var(--f-mono); color: var(--muted); text-align: right; }
   .ck-by { grid-column: 2 / 4; font-size: 11px; color: var(--ok); }
   .ck.on .ck-l { color: var(--muted); text-decoration: line-through; }
+  /* countdown */
+  .clock #cdLabel { font: 500 10px/1 var(--f-head); letter-spacing: .18em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .clock #clockTime.soon { color: var(--bad); text-shadow: 0 0 14px var(--glow); }
+  .clock #clockDay { text-transform: none; letter-spacing: .04em; font: 500 11px/1.2 var(--f-body); }
+  .clock #cdDiff { font: 500 11px/1.2 var(--f-body); color: var(--accent); margin-top: 3px; min-height: 13px; }
+  .cd-sports { display: flex; gap: 4px; justify-content: flex-end; margin-top: 6px; flex-wrap: wrap; }
+  .cd-sports button { background: transparent; border: 1px solid var(--line); color: var(--muted); border-radius: 3px;
+    font: 500 10px/1 var(--f-head); letter-spacing: .1em; padding: 4px 6px; }
+  .cd-sports button.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  @media (max-width: 600px) {
+    .clock { flex-wrap: wrap; } .clock #cdLabel { margin: 0; } .clock #clockDay { display: block !important; }
+    .cd-sports { justify-content: flex-start; width: 100%; }
+  }
+  /* compact countdown (2026-11-12) */
+  .clock .cd-row { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+  .clock .cd-row2 { display: flex; gap: 8px; justify-content: flex-end; margin-top: 3px; white-space: nowrap; }
+  .clock #clockTime { font-size: 20px !important; }
+  .clock #cdLabel { margin: 0 !important; }
+  .clock #clockDay { margin: 0 !important; font: 500 11px/1.2 var(--f-body) !important; letter-spacing: .02em !important; }
+  .clock #cdDiff { margin: 0 !important; min-height: 0 !important; }
+  .cd-sports { margin: 0 !important; flex-wrap: nowrap !important; }
+  .cd-sports button { padding: 3px 5px !important; }
+  @media (max-width: 600px) {
+    .clock { display: block !important; width: 100%; }
+    .clock .cd-row { justify-content: flex-start; flex-wrap: nowrap; }
+    .clock .cd-row2 { justify-content: flex-start; flex-wrap: wrap; white-space: normal; gap: 2px 8px; }
+    .clock #clockTime { font-size: 17px !important; }
+    .clock #cdLabel { white-space: nowrap; letter-spacing: .08em !important; }
+    .cd-sports { width: auto !important; overflow-x: auto; }
+    .top > div:last-child { flex-wrap: wrap; row-gap: 6px; }
+  }
   .hidden { display: none !important; }
 </style>
 </head>
@@ -410,7 +441,11 @@
         </div>
         
         <div style="display:flex;gap:18px;align-items:center">
-          <div class="clock"><div id="clockTime">--:--:--</div><div id="clockDay">Eastern</div></div>
+          <div class="clock">
+            <div class="cd-row"><span id="cdLabel">Next lock</span><span id="clockTime">--:--:--</span>
+              <span class="cd-sports" id="cdSports"></span></div>
+            <div class="cd-row2"><span id="clockDay"></span><span id="cdDiff"></span></div>
+          </div>
           <div class="hdr-actions">
             <button class="linkbtn hidden" id="addTaskBtn">+ Add task</button>
             <button class="linkbtn" id="signOut">Sign out</button>
@@ -1301,14 +1336,58 @@ document.addEventListener("visibilitychange", () => {
 
 if (store.get("token")) start(); else $("login").classList.remove("hidden");
 
-// ---- war room clock (ET) ----
-(function () {
-  const t = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" });
-  const d = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short", month: "short", day: "numeric" });
-  const tick = () => { const now = new Date(); const a = $("clockTime"), b = $("clockDay");
-    if (a) a.textContent = t.format(now); if (b) b.textContent = d.format(now) + " · ET"; };
-  tick(); setInterval(tick, 1000);
-})();
+// ---- countdown to the next slate lock, by sport (Chris, 2026-11-12) ----
+let cdSport = store.get("cdSport") || "All";
+function cdLocks() {
+  return ((state && state.slate_locks) || []).map(([league, lock, site, name]) => ({ league, lock: new Date(lock), site, name }));
+}
+function cdChips() {
+  const el = $("cdSports"); if (!el || !state) return;
+  const now = new Date();
+  const leagues = [...new Set(cdLocks().filter((l) => l.lock > now).map((l) => l.league))].sort();
+  if (cdSport !== "All" && !leagues.includes(cdSport)) cdSport = "All";
+  const html = ["All", ...leagues].map((l) => `<button data-cd="${esc(l)}" class="${l === cdSport ? "on" : ""}">${esc(l)}</button>`).join("");
+  if (el.innerHTML !== html) el.innerHTML = html;
+}
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-cd]"); if (!b) return;
+  cdSport = b.dataset.cd; store.set("cdSport", cdSport); cdChips(); cdTick();
+});
+const SITE_AB = { draftkings: "DK", fanduel: "FD", yahoo: "Yahoo", underdog: "UD", prizepicks: "PP" };
+const cdFmt = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short", hour: "numeric", minute: "2-digit" });
+function cdTick() {
+  const t = $("clockTime"), lab = $("cdLabel"), sub = $("clockDay"); if (!t) return;
+  const now = new Date();
+  const next = cdLocks().filter((l) => l.lock > now && (cdSport === "All" || l.league === cdSport)).sort((a, b) => a.lock - b.lock);
+  if (!next.length) { t.textContent = "--:--:--"; lab.textContent = `Next lock · ${cdSport}`; sub.textContent = "no upcoming slates"; t.classList.remove("soon"); return; }
+  const first = next[0], same = next.filter((l) => +l.lock === +first.lock);
+  let sec = Math.floor((first.lock - now) / 1000);
+  const d = Math.floor(sec / 86400); sec %= 86400;
+  const p = (n) => String(n).padStart(2, "0");
+  t.textContent = (d ? d + "d " : "") + `${p(Math.floor(sec / 3600))}:${p(Math.floor(sec / 60) % 60)}:${p(sec % 60)}`;
+  t.classList.toggle("soon", first.lock - now < 15 * 60000);
+  lab.textContent = `Next lock · ${cdSport === "All" ? first.league : cdSport}`;
+  // which slate locks next (Chris, 2026-11-12): "NBA Main · DK/FD · Thu 7:00 PM ET"
+  const names = [...new Set(same.map((l) => l.name))];
+  const sites = [...new Set(same.map((l) => SITE_AB[l.site] || l.site))].join("/");
+  sub.textContent = `${first.league} ${names.slice(0, 2).join(" + ")}${names.length > 2 ? ` +${names.length - 2}` : ""} · ${sites} · ${cdFmt.format(first.lock)} ET`;
+  // DK vs FD: when the other site's next lock for this league is later, say by how much
+  const lg = next.filter((l) => l.league === first.league);
+  const dk = lg.find((l) => l.site === "draftkings"), fd = lg.find((l) => l.site === "fanduel");
+  const diffEl = $("cdDiff");
+  if (diffEl) {
+    let txt = "";
+    if (dk && fd && +dk.lock !== +fd.lock) {
+      const later = dk.lock > fd.lock ? "DK" : "FD";
+      const mins = Math.round(Math.abs(dk.lock - fd.lock) / 60000);
+      const h = Math.floor(mins / 60), m = mins % 60;
+      const span = h ? `${h} hour${h > 1 ? "s" : ""}${m ? ` ${m} min` : ""}` : `${m} min`;
+      txt = `${later} ${span} later`;
+    }
+    diffEl.textContent = txt;
+  }
+}
+setInterval(() => { cdChips(); cdTick(); }, 1000);
 </script>
 </body>
 </html>
