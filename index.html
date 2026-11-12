@@ -748,6 +748,14 @@
     .cov-sums { grid-template-columns: 1fr; gap: 6px; }
     table.cov th, table.cov td { padding: 6px 7px; font-size: 12px; }
   }
+  table.cov td { vertical-align: top; white-space: normal; }
+  table.cov td:first-child, table.cov th { white-space: nowrap; }
+  .cov-s { display: inline-block; margin: 1px 3px 1px 0; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 600;
+    border: 1px solid var(--line); color: var(--ink); white-space: nowrap; }
+  .cov-s.cov-nba { color: var(--accent); border-color: var(--accent); }
+  .cov-gap { font-size: 10px; margin-top: 2px; white-space: nowrap; }
+  table.cov tr.cov-we td { background: color-mix(in srgb, var(--accent) 4%, var(--card)); }
+  table.cov { min-width: 900px; }
   .hidden { display: none !important; }
 </style>
 </head>
@@ -1612,42 +1620,39 @@ function coverageTab() {
   const c = (state.coverage || {}).nba;
   if (!c) return `<div class="empty">No coverage schedule saved yet</div>`;
   const today = state.date;
-  const people = ["Kyle", "Jim", "Tim"];
-  const count = (p, f) => c.days.filter((d) => f(d) && (d.night === p || d.day === p)).length;
+  const people = c.people || ["Kyle", "Jim", "Tim"];
   const isWknd = (d) => [0, 6].includes(new Date(d.date + "T12:00:00Z").getUTCDay());
-  const sum = people.map((p) => `<div class="cov-sum"><b>${p}</b>
-      <span>${count(p, () => true)} shifts</span><span>${c.days.filter((d) => d.night === p).length} nights</span>
-      <span>${c.days.filter((d) => d.day === p).length} days</span><span>${count(p, isWknd)} weekend</span></div>`).join("");
   const gaps = c.days.filter((d) => d.gap).length;
-  const filt = ["All", ...people, "Gaps"].map((w) => `<button data-covwho="${w}" class="${w === covWho ? "on" : ""}">${w === "Gaps" ? `Gaps (${gaps})` : w}</button>`).join("");
-  // weeks run Mon-Sun
+  if (covWho !== "All" && covWho !== "Gaps" && !people.includes(covWho)) covWho = "All";
+  const filt = ["All", ...people, "Gaps"].map((w) => `<button data-covwho="${w}" class="${w === covWho ? "on" : ""}">${w === "Gaps" ? `NBA day gaps (${gaps})` : w}</button>`).join("");
+  const cols = people.includes(covWho) ? [covWho] : people;
   const weekOf = (iso) => { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return d.toISOString().slice(0, 10); };
   const thisWeek = weekOf(today);
+  const chip = (t) => `<span class="cov-s ${/^NBA (night|day)$/.test(t) ? "cov-nba" : ""}">${esc(t)}</span>`;
   let rows = "", lastWeek = "", hidden = 0;
   for (const d of c.days) {
     const wk = weekOf(d.date);
     if (!covPast && wk < thisWeek) { hidden++; continue; }
-    const hit = covWho === "All" || (covWho === "Gaps" ? d.gap : (d.night === covWho || d.day === covWho));
-    if (!hit) continue;
+    const ppl = d.people || {};
+    if (covWho === "Gaps" && !d.gap) continue;
+    if (people.includes(covWho) && !(ppl[covWho] || []).length) continue;
     if (wk !== lastWeek) {
       lastWeek = wk;
       const lbl = new Date(wk + "T12:00:00Z").toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric" });
-      rows += `<tr class="cov-wk"><td colspan="4">Week of ${lbl}</td></tr>`;
+      rows += `<tr class="cov-wk"><td colspan="${cols.length + 2}">Week of ${lbl}</td></tr>`;
     }
-    const dt = new Date(d.date + "T12:00:00Z");
-    const dl = dt.toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short", month: "numeric", day: "numeric" });
-    const g = d.games_note ? `<span class="cov-tbd">Cup TBD</span>` : (d.games || "");
-    const cell = (p) => p ? `<span class="cov-p cov-${p.toLowerCase()}">${p}</span>` : "";
-    rows += `<tr class="${d.date === today ? "cov-today" : ""} ${isWknd(d) ? "cov-we" : ""} ${!d.games && !d.games_note ? "cov-off" : ""}">
-      <td>${dl}</td><td class="cov-g">${g}</td><td>${cell(d.night)}</td>
-      <td>${d.gap ? `<span class="cov-gap">No one</span>` : cell(d.day)}</td></tr>`;
+    const dl = new Date(d.date + "T12:00:00Z").toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short", month: "numeric", day: "numeric" });
+    const g = d.games_note ? `<span class="cov-tbd">Cup TBD</span>` : (d.games || "–");
+    rows += `<tr class="${d.date === today ? "cov-today" : ""} ${isWknd(d) ? "cov-we" : ""}">
+      <td>${dl}</td><td class="cov-g">${g}${d.gap ? `<div class="cov-gap">no day shift</div>` : ""}</td>
+      ${cols.map((p) => `<td>${(ppl[p] || []).map(chip).join("")}</td>`).join("")}</tr>`;
   }
   const first = c.days[0].date, last = c.days[c.days.length - 1].date;
   const fmt = (iso) => new Date(iso + "T12:00:00Z").toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric" });
   return `<h2>${esc(c.title || "Coverage")} · ${fmt(first)} – ${fmt(last)}</h2>
-    <div class="cov-sums">${sum}</div>
-    <div class="filters cov-filt">${filt}${hidden || covPast ? `<button data-covpast="1" class="${covPast ? "on" : ""}">${covPast ? "Hide past" : `Show past`}</button>` : ""}</div>
-    <div class="cov-wrap"><table class="cov"><thead><tr><th>Date</th><th>Games</th><th>Night</th><th>Day</th></tr></thead><tbody>${rows || `<tr><td colspan="4">Nothing to show</td></tr>`}</tbody></table></div>
+    <div class="filters cov-filt">${filt}${hidden || covPast ? `<button data-covpast="1" class="${covPast ? "on" : ""}">${covPast ? "Hide past" : "Show past"}</button>` : ""}</div>
+    <div class="cov-wrap"><table class="cov"><thead><tr><th>Date</th><th>NBA games</th>${cols.map((p) => `<th>${esc(p)}</th>`).join("")}</tr></thead>
+    <tbody>${rows || `<tr><td colspan="${cols.length + 2}">Nothing to show</td></tr>`}</tbody></table></div>
     <details class="cov-rules"><summary>Rules</summary><ul>${(c.rules || []).map((r) => `<li>${esc(r)}</li>`).join("")}</ul></details>`;
 }
 document.addEventListener("click", (e) => {
