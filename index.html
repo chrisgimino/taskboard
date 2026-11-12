@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -423,13 +423,18 @@
   .task.compact .t3 .small:first-of-type { margin-left: 4px; }
   .task.checklist { padding: 8px 10px 8px 14px; margin-bottom: 5px; }
   .task.checklist .name { font-size: 14px; margin: 4px 0 2px; }
-  @media (min-width: 900px) {   /* desktop: buttons on the right of the name line, one row per task */
-    .task.compact { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; align-items: center; }
-    .task.compact .t1 { grid-column: 1; grid-row: 1; }
-    .task.compact .t3 { grid-column: 2; grid-row: 1 / span 2; margin-top: 0; justify-content: flex-end; }
-    .task.compact .t2 { grid-column: 1; grid-row: 2; }
+  @media (min-width: 900px) {   /* desktop: line 1 = time, sport, name; line 2 = links left, buttons right */
+    .task.compact { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; align-items: center; }
+    .task.compact .t1 { grid-column: 1 / -1; }
+    .task.compact .t2 { grid-column: 1; grid-row: 2; margin-top: 4px; }
+    .task.compact .t3 { grid-column: 2; grid-row: 2; justify-content: flex-end; }
+    .task.compact .t3:only-of-type, .task.compact .t1 + .t3 { grid-column: 1 / -1; justify-content: flex-start; }
   }
-  @media (max-width: 600px) { .task.compact .name { flex-basis: 100%; } }
+  .task.compact .due, .task.compact .chip { white-space: nowrap; flex: 0 0 auto; }
+  .task.compact .name { flex: 1 1 260px; min-width: 0; }
+  .task.compact .t1links { font-size: 12px; color: var(--muted); margin-left: auto; text-align: right; }
+  .task.compact .t1links a { white-space: nowrap; }
+  @media (max-width: 600px) { .task.compact .name { flex-basis: 100%; } .task.compact .t1links { margin-left: 0; text-align: left; } }
   /* ================= THE BRIDGE theme (Chris, 2026-11-12): retro-futurist starship, white / gray / black ================= */
   :root, :root[data-theme] {
     --bg: #eceef1; --card: #ffffff; --card2: #fafbfc; --ink: #0d0f12; --muted: #6b7178; --line: #d3d7dc;
@@ -589,6 +594,16 @@
   .clock #cdLabel, .hdr-actions .linkbtn { white-space: nowrap; }
   .hdr-actions { gap: 12px; }
   @media (min-width: 900px) { #subline { white-space: nowrap; } }
+  .clock { min-width: 0; max-width: 640px; overflow: hidden; }
+  .clock .cd-row2 { min-width: 0; }
+  .clock #clockDay { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .cd-sports { overflow-x: auto; scrollbar-width: none; }
+  .top > div:last-child { min-width: 0; }
+  #cdSelect { font: 400 9px/1 var(--f-head); letter-spacing: .14em; text-transform: uppercase; color: #e8eaed;
+    background: #1b1e22; border: 1px solid #3a3f45; border-radius: 999px; padding: 4px 22px 4px 9px; appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, #9aa0a6 50%), linear-gradient(135deg, #9aa0a6 50%, transparent 50%);
+    background-position: calc(100% - 11px) 50%, calc(100% - 7px) 50%; background-size: 4px 4px; background-repeat: no-repeat; cursor: pointer; }
+  .cd-sports { overflow: visible !important; }
   .hidden { display: none !important; }
 </style>
 </head>
@@ -712,7 +727,7 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
   del(k) { try { localStorage.removeItem(k); } catch {} },
 };
-// light / dark toggle (Chris, 2026-11-12); remembered per browser, light by default
+// light / dark toggle (Chris, 2026-11-12); remembered per browser, dark by default
 function setTheme(t) {
   document.documentElement.dataset.theme = t;
   store.set("theme", t);
@@ -721,7 +736,7 @@ function setTheme(t) {
 }
 document.getElementById("themeBtn").addEventListener("click", () =>
   setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
-setTheme(document.documentElement.dataset.theme === "dark" ? "dark" : "light");
+setTheme(document.documentElement.dataset.theme === "light" ? "light" : "dark");   // dark by default
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const fmtTime = (iso) => iso ? new Date(iso).toLocaleTimeString("en-US", { timeZone: TZ, hour: "numeric", minute: "2-digit" }) : "";
 const fmtDate = (iso) => new Date(iso).toLocaleDateString("en-US", { timeZone: TZ, weekday: "short", month: "short", day: "numeric" });
@@ -966,7 +981,7 @@ function taskCard(task) {
   const links = (task.resources || []).map((r) => (typeof r === "string" ? { label: r, url: r } : r))
     .filter((r) => r && /^https?:\/\//i.test(r.url || ""))
     .map((r) => `<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.label || r.url)}</a>`);
-  const sub = [task.note ? `<span class="note">${esc(task.note)}</span>` : "", links.join(" · ")].filter(Boolean);
+  const sub = task.note ? [`<span class="note">${esc(task.note)}</span>`] : [];
   const stepsBtn = task.steps && task.steps.length ? `<button class="small" data-steps="${esc(task.task_id)}">Steps (${task.steps.length})</button>` : "";
   return `<div class="${classes.join(" ")} compact" style="--c:var(--sp-${LEAGUE_VAR[task.sport] || SPORT_VAR[task.sport] || "other"})">
     <div class="t1">
@@ -977,6 +992,7 @@ function taskCard(task) {
       ${task.carried_from ? `<span class="chip">from ${esc(new Date(task.carried_from + "T12:00:00Z").toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short" }))}</span>` : ""}
       ${expired ? '<span class="chip">EXPIRED</span>' : ""}
       <span class="name" title="${esc(task.category || "")}">${esc(task.name)}</span>
+      ${links.length ? `<span class="t1links">${links.join(" · ")}</span>` : ""}
     </div>
     ${sub.length ? `<div class="t2 res">${sub.join(" · ")}</div>` : ""}
     <div class="t3">${people}${stepsBtn}${actionBtn}${jobLine}${secondary}</div>
@@ -1539,19 +1555,29 @@ if (store.get("token")) start(); else $("login").classList.remove("hidden");
 // ---- countdown to the next slate lock, by sport (Chris, 2026-11-12) ----
 let cdSport = store.get("cdSport") || "All";
 function cdLocks() {
-  return ((state && state.slate_locks) || []).map(([league, lock, site, name]) => ({ league, lock: new Date(lock), site, name }));
+  // DK / FD classic slates only; label = the slate's own tag (Main / Turbo / Late ...), else Main / Classic
+  const mains = new Set(((state && state.main_slates) || []).map((m) => String(m.slate_id)));
+  return ((state && state.slate_locks) || [])
+    .map(([league, lock, site, name, type, id]) => {
+      const tag = (String(name || "").match(/\(([^)]+)\)\s*$/) || [])[1] || "";
+      return { league, lock: new Date(lock), site, type: type || "", id: id || "", raw: String(name || ""),
+               name: tag || (id && mains.has(String(id)) ? "Main" : "Classic") };
+    })
+    .filter((l) => (l.site === "draftkings" || l.site === "fanduel")
+      && (l.type ? l.type === "classic" : !/ @ |all day|tiers/i.test(l.raw)));
 }
 function cdChips() {
   const el = $("cdSports"); if (!el || !state) return;
   const now = new Date();
   const leagues = [...new Set(cdLocks().filter((l) => l.lock > now).map((l) => l.league))].sort();
   if (cdSport !== "All" && !leagues.includes(cdSport)) cdSport = "All";
-  const html = ["All", ...leagues].map((l) => `<button data-cd="${esc(l)}" class="${l === cdSport ? "on" : ""}">${esc(l)}</button>`).join("");
-  if (el.innerHTML !== html) el.innerHTML = html;
+  const html = `<select id="cdSelect" aria-label="Sport">` + ["All", ...leagues].map((l) =>
+    `<option value="${esc(l)}" ${l === cdSport ? "selected" : ""}>${esc(l === "All" ? "All sports" : l)}</option>`).join("") + `</select>`;
+  if (el.dataset.html !== html) { el.dataset.html = html; el.innerHTML = html; }
 }
-document.addEventListener("click", (e) => {
-  const b = e.target.closest("[data-cd]"); if (!b) return;
-  cdSport = b.dataset.cd; store.set("cdSport", cdSport); cdChips(); cdTick();
+document.addEventListener("change", (e) => {
+  if (!e.target || e.target.id !== "cdSelect") return;
+  cdSport = e.target.value; store.set("cdSport", cdSport); cdChips(); cdTick();
 });
 const SITE_AB = { draftkings: "DK", fanduel: "FD", yahoo: "Yahoo", underdog: "UD", prizepicks: "PP" };
 const cdFmt = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short", hour: "numeric", minute: "2-digit" });
