@@ -8,7 +8,7 @@
 <script>try { var t = localStorage.getItem("theme"); if (t === "dark" || t === "light") document.documentElement.dataset.theme = t; } catch (e) {}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&family=Oswald:wght@500;600;700&family=Michroma&family=Exo+2:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&family=Oswald:wght@500;600;700&family=Orbitron:wght@400;500;600;700&family=Exo+2:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #f4f5f7; --card: #ffffff; --ink: #16181d; --muted: #6b7280; --line: #e3e5ea;
@@ -445,9 +445,9 @@
     --sp-soccer: #b8507f; --sp-golf: #3a8a4f; --sp-mma: #6c5fc7; --sp-tennis: #c24b4b; --sp-other: #9aa0a6;
     --h1: #e4e7ea; --h2: #c9ced3; --h3: #a3aab1; --h4: #6f777f; --h5: #3f454b; --h6: #15181b; --h-ink-dark: #ffffff;
     --now: #d4110f; color-scheme: light;
-    --f-head: "Michroma", "Eurostile", "Microgramma", "Orbitron", sans-serif;
+    --f-head: "Orbitron", "Eurostile", "Microgramma", sans-serif;
     --f-body: "Exo 2", "Eurostile", -apple-system, "Segoe UI", sans-serif;
-    --f-mono: "Share Tech Mono", ui-monospace, Menlo, monospace;
+    --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
   }
   html, body { background: var(--bg); color: var(--ink); font-family: var(--f-body); }
   body {
@@ -604,6 +604,72 @@
     background-image: linear-gradient(45deg, transparent 50%, #9aa0a6 50%), linear-gradient(135deg, #9aa0a6 50%, transparent 50%);
     background-position: calc(100% - 11px) 50%, calc(100% - 7px) 50%; background-size: 4px 4px; background-repeat: no-repeat; cursor: pointer; }
   .cd-sports { overflow: visible !important; }
+  .top .brand { flex: 0 0 auto; }                 /* title never covered by the countdown */
+  .top > div:last-child { flex: 1 1 auto; justify-content: flex-end; }
+  .clock { flex: 0 1 auto; }
+  /* Orbitron titles + Exo 2 text (Chris, 2026-11-12) */
+  h1 { font-weight: 600; letter-spacing: .22em; }
+  nav button, .stat span, .chip, .person, .small, .action, h2, .linkbtn, .filters button, .seg button,
+  .tagline, .clock #cdLabel, #cdSelect, th, .col h3 { font-weight: 500 !important; }
+  .stat b { font-weight: 600; }
+  /* columns view: cards are narrow, so the plain stacked layout (no side-by-side note / buttons) */
+  .col .task.compact { display: block !important; }
+  .col .task.compact .t3 { justify-content: flex-start !important; margin-top: 5px; }
+  .col .task.compact .t1links { margin-left: 0; text-align: left; flex-basis: 100%; }
+  .col .task.compact .name { flex-basis: 100%; }
+  /* light mode = Fog (Chris, 2026-11-12) */
+  :root[data-theme="light"] { --bg: #dfe2e6; --card: #eceef1; --card2: #eceef1; --line: #c9ced4; --chip: #e6e9ec; }
+  [data-theme="light"] body { background: linear-gradient(rgba(13,15,18,.04) 1px, transparent 1px) 0 0 / 100% 40px,
+    linear-gradient(90deg, rgba(13,15,18,.035) 1px, transparent 1px) 0 0 / 40px 100%, var(--bg); background-attachment: fixed; }
+  [data-theme="light"] header { background: #e6e9ec; }
+  [data-theme="light"] .task.overdue, [data-theme="light"] .filters button, [data-theme="light"] .seg button,
+  [data-theme="light"] .empty, [data-theme="light"] table, [data-theme="light"] .col, [data-theme="light"] .tl,
+  [data-theme="light"] .heat, [data-theme="light"] .detail, [data-theme="light"] .tl-label, [data-theme="light"] dialog.modal,
+  [data-theme="light"] .login { background: var(--card); }
+  [data-theme="light"] .person { background: transparent; }
+  [data-theme="light"] tbody tr:nth-child(odd) td { background: #e4e7ea; }
+  [data-theme="light"] .filters button.on, [data-theme="light"] .seg button.on { background: #0d0f12; border-color: #0d0f12; color: #fff; }
+  .task.compact .t3 .done-btn { padding: 6px 16px; }
+  .desk { scroll-snap-type: x proximity; }
+  /* ---------------- phone (Chris, 2026-11-12): built for one-hand use ---------------- */
+  @media (max-width: 600px) {
+    .wrap { padding-left: 12px !important; padding-right: 12px !important; }
+    header { padding-top: 6px; }
+    .top { gap: 8px; }
+    h1 { font-size: 18px !important; letter-spacing: .16em !important; }
+    .tagline { font-size: 8px; letter-spacing: .36em; margin-top: 5px; }
+    #subline { font-size: 11px; white-space: normal; }
+    .clock { width: 100%; max-width: none; padding: 7px 10px; border-radius: 3px 12px 3px 12px; }
+    .clock .cd-row { gap: 8px; justify-content: space-between; }
+    .clock #clockTime { font-size: 19px !important; }
+    #cdSelect { font-size: 8px; padding: 4px 20px 4px 8px; }
+    .hdr-actions { width: 100%; justify-content: flex-start; gap: 16px !important; flex-wrap: wrap; row-gap: 6px; }
+    .hdr-actions .linkbtn { font-size: 9px; padding: 4px 0; }
+    .summary { gap: 6px; margin-top: 10px; }
+    .stat { padding: 6px 8px 5px; border-radius: 2px 8px 2px 8px; }
+    .stat b { font-size: 18px; } .stat span { font-size: 7px; letter-spacing: .16em; margin-top: 5px; }
+    nav { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; -webkit-overflow-scrolling: touch; margin-top: 10px; }
+    nav::-webkit-scrollbar { display: none; }
+    nav button { flex: 0 0 auto; padding: 11px 10px 10px; font-size: 9px; letter-spacing: .18em; }
+    h2 { font-size: 10px; letter-spacing: .26em; margin: 16px 0 8px; }
+    .bar { gap: 6px; margin: 10px 0 6px; }
+    .filters { gap: 5px; margin: 8px 0 4px; }
+    .filters button, .seg button { font-size: 8px; padding: 6px 9px; }
+    .task.compact { padding: 8px 10px 8px 12px; margin-bottom: 6px; }
+    .task.compact .t1 { gap: 5px; row-gap: 4px; }
+    .task.compact .name { flex-basis: 100%; font-size: 15px; line-height: 1.3; }
+    .task.compact .t1links { flex-basis: 100%; font-size: 12px; line-height: 1.5; margin: 0; text-align: left; }
+    .task.compact .t2 { font-size: 12px; }
+    .task.compact .t3 { gap: 6px; margin-top: 7px; }
+    .task.compact .t3 .person { padding: 7px 11px; font-size: 9px; }
+    .task.compact .t3 .done-btn { padding: 8px 20px; }
+    .task.compact .t3 .small { padding: 7px 8px; font-size: 8px; }
+    .task.compact .t3 .action { padding: 8px 12px; font-size: 9px; }
+    .desk { gap: 8px; margin-left: -12px; margin-right: -12px; padding: 0 12px 8px; scroll-snap-type: x mandatory; }
+    .col { flex: 0 0 calc(100vw - 40px); max-height: none; scroll-snap-align: start; }
+    .col .body { padding: 0 8px 8px; }
+    dialog.modal { width: calc(100vw - 24px); max-width: none; margin: auto; }
+  }
   .hidden { display: none !important; }
 </style>
 </head>
@@ -635,7 +701,7 @@
       <div class="top">
         <div class="brand">
           <div>
-            <h1>The Bridge<span class="live">Live</span></h1>
+            <h1>The Bridge</h1>
             <div class="tagline">Team Dashboard</div>
             <div class="sub" id="subline"></div>
             <div class="sub hidden" id="paused"></div>
@@ -650,6 +716,7 @@
           </div>
           <div class="hdr-actions">
             <button class="linkbtn hidden" id="addTaskBtn">+ Add task</button>
+            <button class="linkbtn hidden" id="namesBtn" title="Show every name on tasks, or just a Done button">Names</button>
             <button class="linkbtn" id="themeBtn" title="Light / dark mode">Dark</button>
             <button class="linkbtn" id="signOut">Sign out</button>
           </div>
@@ -734,6 +801,15 @@ function setTheme(t) {
   const b = document.getElementById("themeBtn");
   if (b) b.textContent = t === "dark" ? "Light" : "Dark";
 }
+function namesMode() { return store.get("names") === "all" ? "all" : "me"; }
+function namesLabel() {
+  const b = document.getElementById("namesBtn"); if (!b) return;
+  b.classList.toggle("hidden", !(state && state.admin && state.team.includes(state.user)));
+  b.textContent = namesMode() === "all" ? "Just me" : "All names";
+}
+document.getElementById("namesBtn").addEventListener("click", () => {
+  store.set("names", namesMode() === "all" ? "me" : "all"); namesLabel(); render();
+});
 document.getElementById("themeBtn").addEventListener("click", () =>
   setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
 setTheme(document.documentElement.dataset.theme === "light" ? "light" : "dark");   // dark by default
@@ -945,7 +1021,14 @@ function taskCard(task) {
         : `<button class="person me" data-mark="done" data-decision="approved" data-task="${esc(task.task_id)}">Approve</button>
            <button class="person" data-mark="done" data-decision="rejected" data-task="${esc(task.task_id)}">Reject</button>`)
     : null;
-  const people = approval !== null ? approval : expired ? `<span class="person">expired unmarked ${task.expires_et ? "at " + fmtTime(task.expires_et) : ""}</span>` : state.team.map((name) => {
+  // one "Done" button (Chris, 2026-11-12); admins can switch to every name (header "Names" toggle). An admin who is
+  // not on the team (Andy, Ross) always gets every name so they can mark for anyone.
+  const allNames = state.admin && (namesMode() === "all" || !state.team.includes(me));
+  const people = approval !== null ? approval : expired ? `<span class="person">expired unmarked ${task.expires_et ? "at " + fmtTime(task.expires_et) : ""}</span>`
+    : !allNames ? (m
+        ? `<span class="person closer ${esc(m.status)}">${m.status === "done" ? "✓" : esc(m.status)} ${esc(m.user)} ${fmtTime(m.at_et)}${m.marked_by ? ` (by ${esc(m.marked_by)})` : ""}</span>`
+        : task.kind === "placeholder" ? "" : `<button class="person me done-btn" data-mark="done" data-task="${esc(task.task_id)}">Done</button>`)
+    : state.team.map((name) => {
     if (m && m.user === name) {
       const label = m.status === "done" ? "✓" : m.status === "skipped" ? "skipped" : "missed";
       return `<span class="person closer ${esc(m.status)}">${label} ${esc(name)} ${fmtTime(m.at_et)}${m.marked_by ? ` (by ${esc(m.marked_by)})` : ""}</span>`;
@@ -1044,6 +1127,7 @@ function feedSection() {
 function render() {
   if (!state) return;
   $("subline").textContent = `${fmtDate(state.now_et)} · signed in as ${state.user} · updated ${fmtTime(new Date().toISOString())}`;
+  namesLabel();
   const tasks = state.tasks;
   const open = tasks.filter((t) => !statusOf(t) && t.kind !== "placeholder");
   const overdue = open.filter(isOverdue).length;
