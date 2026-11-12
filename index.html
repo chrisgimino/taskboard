@@ -1,13 +1,14 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<title>War Room</title>
+<title>The Bridge</title>
+<script>try { var t = localStorage.getItem("theme"); if (t === "dark" || t === "light") document.documentElement.dataset.theme = t; } catch (e) {}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&family=Oswald:wght@500;600;700&family=Michroma&family=Exo+2:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #f4f5f7; --card: #ffffff; --ink: #16181d; --muted: #6b7280; --line: #e3e5ea;
@@ -404,14 +405,199 @@
     .cd-sports { width: auto !important; overflow-x: auto; }
     .top > div:last-child { flex-wrap: wrap; row-gap: 6px; }
   }
+  /* compact task cards (Chris, 2026-11-12): as little height per task as possible */
+  .task.compact { padding: 6px 10px 6px 14px; margin-bottom: 5px; box-shadow: 0 1px 0 rgba(255,255,255,.03) inset; }
+  .task.compact::before { width: 4px; }
+  .task.compact .t1 { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .task.compact .due { font: 600 12px/1 var(--f-mono); color: var(--accent); background: rgba(242,183,5,.08);
+    border: 1px solid rgba(242,183,5,.3); padding: 2px 5px; border-radius: 3px; font-variant-numeric: tabular-nums; }
+  .task.compact.overdue .due { color: #fff; background: var(--red); border-color: var(--red); }
+  .task.compact .chip { padding: 2px 5px; font-size: 10px; }
+  .task.compact .name { font: 600 14px/1.25 var(--f-body); margin: 0; flex: 1 1 240px; min-width: 0; }
+  .task.compact .t2 { font-size: 12px; line-height: 1.3; margin-top: 2px; }
+  .task.compact .t2 .note { font-size: 12px; }
+  .task.compact .t3 { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; margin-top: 4px; }
+  .task.compact .t3 .person { padding: 4px 7px; font-size: 11px; }
+  .task.compact .t3 .small { padding: 4px 6px; font-size: 10px; }
+  .task.compact .t3 .action { padding: 5px 9px; font-size: 11px; }
+  .task.compact .t3 .small:first-of-type { margin-left: 4px; }
+  .task.checklist { padding: 8px 10px 8px 14px; margin-bottom: 5px; }
+  .task.checklist .name { font-size: 14px; margin: 4px 0 2px; }
+  @media (min-width: 900px) {   /* desktop: buttons on the right of the name line, one row per task */
+    .task.compact { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; align-items: center; }
+    .task.compact .t1 { grid-column: 1; grid-row: 1; }
+    .task.compact .t3 { grid-column: 2; grid-row: 1 / span 2; margin-top: 0; justify-content: flex-end; }
+    .task.compact .t2 { grid-column: 1; grid-row: 2; }
+  }
+  @media (max-width: 600px) { .task.compact .name { flex-basis: 100%; } }
+  /* ================= THE BRIDGE theme (Chris, 2026-11-12): retro-futurist starship, white / gray / black ================= */
+  :root, :root[data-theme] {
+    --bg: #eceef1; --card: #ffffff; --card2: #fafbfc; --ink: #0d0f12; --muted: #6b7178; --line: #d3d7dc;
+    --accent: #0d0f12; --accent-ink: #ffffff; --ok: #1f8a5a; --ok-bg: rgba(31,138,90,.08);
+    --warn: #b06b00; --warn-bg: rgba(176,107,0,.08); --bad: #d4110f; --bad-bg: rgba(212,17,15,.05); --chip: #e9ecef;
+    --red: #d4110f; --glow: rgba(212,17,15,.25); --signal: #d4110f;
+    --sp-football: #3c6fb0; --sp-basketball: #d9672b; --sp-baseball: #2e9a72; --sp-hockey: #4b5560;
+    --sp-soccer: #b8507f; --sp-golf: #3a8a4f; --sp-mma: #6c5fc7; --sp-tennis: #c24b4b; --sp-other: #9aa0a6;
+    --h1: #e4e7ea; --h2: #c9ced3; --h3: #a3aab1; --h4: #6f777f; --h5: #3f454b; --h6: #15181b; --h-ink-dark: #ffffff;
+    --now: #d4110f; color-scheme: light;
+    --f-head: "Michroma", "Eurostile", "Microgramma", "Orbitron", sans-serif;
+    --f-body: "Exo 2", "Eurostile", -apple-system, "Segoe UI", sans-serif;
+    --f-mono: "Share Tech Mono", ui-monospace, Menlo, monospace;
+  }
+  html, body { background: var(--bg); color: var(--ink); font-family: var(--f-body); }
+  body {
+    background:
+      radial-gradient(1400px 600px at 50% -200px, #ffffff, transparent 70%),
+      linear-gradient(rgba(13,15,18,.035) 1px, transparent 1px) 0 0 / 100% 40px,
+      linear-gradient(90deg, rgba(13,15,18,.03) 1px, transparent 1px) 0 0 / 40px 100%,
+      var(--bg);
+    background-attachment: fixed;
+  }
+  /* header: bridge console */
+  header { background: linear-gradient(180deg, #ffffff 0%, #f1f3f5 100%); box-shadow: 0 1px 0 var(--line), 0 3px 0 #0d0f12, 0 12px 30px rgba(13,15,18,.08); }
+  .netbar { background: #0d0f12; border-bottom: 0; }
+  .rail img { opacity: .9; }
+  h1 { font: 400 22px/1 var(--f-head); letter-spacing: .32em; color: var(--ink); text-transform: uppercase; }
+  h1 .live { font: 400 9px/1 var(--f-head); letter-spacing: .2em; background: #0d0f12; color: #fff; border-radius: 999px; padding: 4px 9px 4px 8px; vertical-align: 4px; }
+  h1 .live::before { background: var(--signal); box-shadow: 0 0 6px var(--signal); }
+  .tagline { font: 400 9px/1 var(--f-head); letter-spacing: .5em; color: var(--muted); text-transform: uppercase; margin-top: 7px; }
+  .sub { color: var(--muted); font-size: 12px; letter-spacing: .04em; }
+  .linkbtn { color: var(--muted); font: 400 10px/1 var(--f-head); letter-spacing: .2em; }
+  .linkbtn:hover { color: var(--ink); }
+  /* countdown: black readout panel */
+  .clock { background: #0d0f12; border-radius: 3px 14px 3px 14px; padding: 7px 12px; box-shadow: inset 0 0 0 1px #2a2e33, 0 4px 14px rgba(13,15,18,.18); }
+  .clock #clockTime { font: 400 22px/1 var(--f-mono) !important; color: #ffffff; text-shadow: 0 0 10px rgba(255,255,255,.35); letter-spacing: .08em; }
+  .clock #cdLabel { color: #8b9097; font-family: var(--f-head); font-size: 8px; letter-spacing: .3em; }
+  .clock #clockDay { color: #c3c7cc !important; font-family: var(--f-body) !important; }
+  .clock #cdDiff { color: #ff4d4b; font-family: var(--f-body); }
+  .cd-sports button { border-color: #3a3f45; color: #9aa0a6; font: 400 8px/1 var(--f-head); letter-spacing: .15em; border-radius: 999px; }
+  .cd-sports button.on { background: #ffffff; border-color: #ffffff; color: #0d0f12; }
+  /* stat tiles: instrument panels */
+  .stat { background: var(--card); border: 1px solid var(--line); border-radius: 2px 12px 2px 12px; box-shadow: 0 1px 0 #fff inset, 0 3px 10px rgba(13,15,18,.05); }
+  .stat b { font: 400 24px/1 var(--f-head); color: var(--ink); letter-spacing: .04em; }
+  .stat span { font: 400 8px/1 var(--f-head); letter-spacing: .3em; color: var(--muted); margin-top: 7px; }
+  .stat::after { background: var(--line); height: 2px; }
+  .stat.bad { border-color: rgba(212,17,15,.35); box-shadow: none; } .stat.bad b { color: var(--bad); } .stat.bad::after { background: var(--bad); }
+  .stat.ok b { color: var(--ink); } .stat.ok::after { background: var(--ok); }
+  .stat.gold::after { background: #0d0f12; }
+  /* tabs */
+  nav { border-top: 1px solid var(--line); }
+  nav button { color: var(--muted); font: 400 10px/1 var(--f-head); letter-spacing: .24em; padding: 13px 14px 12px; }
+  nav button:hover { color: var(--ink); }
+  nav button.on { color: var(--ink); }
+  nav button.on::after { background: #0d0f12; box-shadow: none; height: 2px; }
+  #newsCount { color: var(--bad); }
+  .filters button, .seg button { background: #fff; border-color: var(--line); color: var(--muted); font: 400 9px/1 var(--f-head); letter-spacing: .2em; border-radius: 999px; }
+  .filters button.on, .seg button.on { background: #0d0f12; border-color: #0d0f12; color: #fff; }
+  /* section headers */
+  h2 { font: 400 11px/1 var(--f-head); letter-spacing: .34em; color: var(--ink); }
+  h2::before { background: #0d0f12; width: 10px; height: 2px; }
+  h2::after { background: linear-gradient(90deg, var(--line), transparent); }
+  h2.hot, h2.hot::before { color: var(--bad); } h2.hot::before { background: var(--bad); box-shadow: none; }
+  /* task cards: white hull panels */
+  .task, .task.compact { background: var(--card); border: 1px solid var(--line); border-radius: 2px 10px 2px 10px;
+    box-shadow: 0 1px 0 #fff inset, 0 2px 6px rgba(13,15,18,.05); }
+  .task:hover { border-color: #aab0b6; }
+  .task::before { border-radius: 2px 0 0 2px; width: 3px !important; }
+  .task.overdue { background: #fff; border-color: rgba(212,17,15,.45); box-shadow: inset 3px 0 0 var(--bad), 0 2px 8px rgba(212,17,15,.08); }
+  .task.closed { opacity: .5; }
+  .name, .task.compact .name { color: var(--ink); font-family: var(--f-body); font-weight: 600; letter-spacing: .01em; }
+  .task.compact .due, .meta .due { font: 400 12px/1 var(--f-mono); color: #fff; background: #0d0f12; border: 0; border-radius: 2px; padding: 3px 6px; letter-spacing: .04em; }
+  .task.compact.overdue .due, .task.overdue .meta .due { background: var(--bad); color: #fff; }
+  .chip { background: var(--chip); color: #3f454b; font: 400 8px/1 var(--f-head); letter-spacing: .18em; border-radius: 999px; padding: 4px 7px; }
+  .task.compact .chip { font-size: 8px; padding: 4px 7px; }
+  .chip.crit { background: var(--bad); color: #fff; animation: none; }
+  .note, .res { color: var(--muted); }
+  .res a, .feed .flink, a { color: #2b5c9e; }
+  .person { background: #fff; border-color: var(--line); color: var(--muted); font: 400 9px/1 var(--f-head); letter-spacing: .16em; border-radius: 999px; }
+  .task.compact .t3 .person { font-size: 9px; padding: 5px 9px; }
+  .person.me { border-color: #0d0f12; color: #0d0f12; background: #fff; }
+  .person.me:hover { background: #0d0f12; color: #fff; }
+  .person.closer { background: var(--ok-bg); border-color: rgba(31,138,90,.4); color: var(--ok); }
+  .person.closer.skipped, .person.closer.missed { background: var(--warn-bg); border-color: rgba(176,107,0,.4); color: var(--warn); }
+  .small, .task.compact .t3 .small { background: transparent; border-color: transparent; color: #8b9097; font: 400 8px/1 var(--f-head); letter-spacing: .2em; border-radius: 999px; }
+  .small:hover { color: var(--ink); border-color: var(--line); }
+  .action, .task.compact .t3 .action { background: #0d0f12; color: #fff; border-radius: 999px; font: 400 9px/1 var(--f-head); letter-spacing: .18em; }
+  .feed { border-color: var(--line); } .feed .ftext { color: var(--ink); }
+  .empty { background: #fff; border: 1px dashed var(--line); color: var(--muted); font: 400 9px/1.6 var(--f-head); letter-spacing: .24em; }
+  table { background: #fff; border-color: var(--line); }
+  th { background: #0d0f12; color: #c3c7cc; font: 400 8px/1 var(--f-head); letter-spacing: .24em; }
+  td { color: var(--ink); border-color: var(--line); font-family: var(--f-mono); }
+  td:first-child { font-family: var(--f-body); }
+  tbody tr:nth-child(odd) td { background: #f7f8f9; } tbody tr:first-child td { color: var(--ink); font-weight: 700; }
+  .col, .tl, .heat, .detail { background: #fff; border-color: var(--line); }
+  .col h3 { background: #0d0f12; color: #fff; font: 400 10px/1 var(--f-head); letter-spacing: .24em; }
+  .tl-label, .heat thead th, .heat th.dl { background: #fff; color: var(--ink); }
+  dialog.modal { background: #fff; color: var(--ink); border-color: var(--line); border-radius: 3px 16px 3px 16px; }
+  dialog.modal h3 { font: 400 13px/1.3 var(--f-head); letter-spacing: .2em; }
+  .nflrep .rep-h { color: var(--ink); font: 400 10px/1 var(--f-head); letter-spacing: .24em; }
+  .ck-list summary { font: 400 9px/1 var(--f-head); letter-spacing: .2em; color: var(--muted); }
+  .login { background: #fff; border: 1px solid var(--line); border-top: 3px solid #0d0f12; border-radius: 3px 18px 3px 18px; box-shadow: 0 20px 50px rgba(13,15,18,.12); }
+  .login h1 { font-size: 22px; }
+  .login input { background: #f4f5f7; border-color: var(--line); color: var(--ink); }
+  .login button { background: #0d0f12; color: #fff; font: 400 11px/1 var(--f-head); letter-spacing: .3em; border-radius: 999px; }
+  input, select, textarea { color: var(--ink); }
+  @media (max-width: 600px) {
+    h1 { font-size: 17px; letter-spacing: .24em; } .tagline { font-size: 8px; letter-spacing: .4em; }
+    .clock { padding: 6px 10px; } .clock #clockTime { font-size: 18px !important; }
+    .stat b { font-size: 18px; } nav button { font-size: 9px; padding: 11px 10px; }
+  }
+  /* ---- The Bridge, dark mode: night-cycle bridge (black hull, gray panels, white readouts) ---- */
+  :root[data-theme="dark"] {
+    --bg: #0a0b0d; --card: #15171a; --card2: #191c20; --ink: #e8eaed; --muted: #8a9097; --line: #2a2e33;
+    --accent: #e8eaed; --accent-ink: #0a0b0d; --ok: #3fbf86; --ok-bg: rgba(63,191,134,.10);
+    --warn: #e0a040; --warn-bg: rgba(224,160,64,.10); --bad: #ff4b48; --bad-bg: rgba(255,75,72,.07); --chip: #24282d;
+    --red: #e3201d; --glow: rgba(255,75,72,.3); --signal: #ff4b48;
+    --sp-hockey: #9aa3ad; --sp-other: #5d636a;
+    --h1: #1a1d21; --h2: #2c3137; --h3: #4a5159; --h4: #7c848c; --h5: #b5bbc1; --h6: #eef0f2; --h-ink-dark: #0a0b0d;
+    color-scheme: dark;
+  }
+  [data-theme="dark"] body {
+    background: radial-gradient(1400px 600px at 50% -200px, #1c1f23, transparent 70%),
+      linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px) 0 0 / 100% 40px,
+      linear-gradient(90deg, rgba(255,255,255,.02) 1px, transparent 1px) 0 0 / 40px 100%, var(--bg);
+    background-attachment: fixed; }
+  [data-theme="dark"] header { background: linear-gradient(180deg, #16181b 0%, #0f1113 100%);
+    box-shadow: 0 1px 0 var(--line), 0 3px 0 #e8eaed, 0 12px 30px rgba(0,0,0,.5); }
+  [data-theme="dark"] .netbar { background: #000; border-bottom: 1px solid #1d2024; }
+  [data-theme="dark"] h1 .live { background: #e8eaed; color: #0a0b0d; }
+  [data-theme="dark"] .clock { background: #000; box-shadow: inset 0 0 0 1px #34393f, 0 4px 14px rgba(0,0,0,.5); }
+  [data-theme="dark"] .stat { box-shadow: none; }
+  [data-theme="dark"] .stat.gold::after, [data-theme="dark"] nav button.on::after, [data-theme="dark"] h2::before { background: #e8eaed; }
+  [data-theme="dark"] h2.hot::before { background: var(--bad); }
+  [data-theme="dark"] .filters button, [data-theme="dark"] .seg button { background: var(--card); }
+  [data-theme="dark"] .filters button.on, [data-theme="dark"] .seg button.on { background: #e8eaed; border-color: #e8eaed; color: #0a0b0d; }
+  [data-theme="dark"] .task, [data-theme="dark"] .task.compact { box-shadow: 0 1px 0 rgba(255,255,255,.03) inset, 0 2px 8px rgba(0,0,0,.4); }
+  [data-theme="dark"] .task:hover { border-color: #454b52; }
+  [data-theme="dark"] .task.overdue { background: #1a1314; border-color: rgba(255,75,72,.45); }
+  [data-theme="dark"] .task.compact .due, [data-theme="dark"] .meta .due { background: #e8eaed; color: #0a0b0d; }
+  [data-theme="dark"] .task.compact.overdue .due, [data-theme="dark"] .task.overdue .meta .due { background: var(--bad); color: #fff; }
+  [data-theme="dark"] .chip { color: #b5bbc1; }
+  [data-theme="dark"] .res a, [data-theme="dark"] .feed .flink, [data-theme="dark"] a { color: #8fb4e8; }
+  [data-theme="dark"] .person { background: transparent; }
+  [data-theme="dark"] .person.me { border-color: #e8eaed; color: #e8eaed; background: transparent; }
+  [data-theme="dark"] .person.me:hover { background: #e8eaed; color: #0a0b0d; }
+  [data-theme="dark"] .action, [data-theme="dark"] .task.compact .t3 .action { background: #e8eaed; color: #0a0b0d; }
+  [data-theme="dark"] .empty, [data-theme="dark"] table, [data-theme="dark"] .col, [data-theme="dark"] .tl,
+  [data-theme="dark"] .heat, [data-theme="dark"] .detail, [data-theme="dark"] .tl-label, [data-theme="dark"] .heat thead th,
+  [data-theme="dark"] .heat th.dl, [data-theme="dark"] dialog.modal { background: var(--card); color: var(--ink); }
+  [data-theme="dark"] th, [data-theme="dark"] .col h3 { background: #000; }
+  [data-theme="dark"] tbody tr:nth-child(odd) td { background: #191c20; }
+  [data-theme="dark"] .login { background: var(--card); border-top-color: #e8eaed; box-shadow: 0 20px 50px rgba(0,0,0,.6); }
+  [data-theme="dark"] .login input { background: #0f1113; }
+  [data-theme="dark"] .login button { background: #e8eaed; color: #0a0b0d; }
+  .clock #cdLabel, .hdr-actions .linkbtn { white-space: nowrap; }
+  .hdr-actions { gap: 12px; }
+  @media (min-width: 900px) { #subline { white-space: nowrap; } }
   .hidden { display: none !important; }
 </style>
 </head>
 <body>
 
 <div id="login" class="login hidden">
-  <h1>War Room</h1>
-  <p class="sub">Projections command center · sign in once, you stay signed in for 30 days.</p>
+  <h1>The Bridge</h1>
+  <div class="tagline">Team Dashboard</div>
+  <p class="sub">Sign in once, you stay signed in for 30 days.</p>
   <form id="loginForm">
     <input id="loginName" autocomplete="username" placeholder="Name" autocapitalize="words" required>
     <input id="loginPin" type="password" autocomplete="current-password" placeholder="PIN" required>
@@ -434,7 +620,8 @@
       <div class="top">
         <div class="brand">
           <div>
-            <h1>War Room<span class="live">Live</span></h1>
+            <h1>The Bridge<span class="live">Live</span></h1>
+            <div class="tagline">Team Dashboard</div>
             <div class="sub" id="subline"></div>
             <div class="sub hidden" id="paused"></div>
           </div>
@@ -448,6 +635,7 @@
           </div>
           <div class="hdr-actions">
             <button class="linkbtn hidden" id="addTaskBtn">+ Add task</button>
+            <button class="linkbtn" id="themeBtn" title="Light / dark mode">Dark</button>
             <button class="linkbtn" id="signOut">Sign out</button>
           </div>
         </div>
@@ -524,6 +712,16 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
   del(k) { try { localStorage.removeItem(k); } catch {} },
 };
+// light / dark toggle (Chris, 2026-11-12); remembered per browser, light by default
+function setTheme(t) {
+  document.documentElement.dataset.theme = t;
+  store.set("theme", t);
+  const b = document.getElementById("themeBtn");
+  if (b) b.textContent = t === "dark" ? "Light" : "Dark";
+}
+document.getElementById("themeBtn").addEventListener("click", () =>
+  setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+setTheme(document.documentElement.dataset.theme === "dark" ? "dark" : "light");
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const fmtTime = (iso) => iso ? new Date(iso).toLocaleTimeString("en-US", { timeZone: TZ, hour: "numeric", minute: "2-digit" }) : "";
 const fmtDate = (iso) => new Date(iso).toLocaleDateString("en-US", { timeZone: TZ, weekday: "short", month: "short", day: "numeric" });
@@ -764,22 +962,24 @@ function taskCard(task) {
     : `<button class="small" data-mark="skipped" data-task="${esc(task.task_id)}">Skip</button>
        <button class="small" data-mark="missed" data-task="${esc(task.task_id)}">Missed</button>`
       + (state.admin && task.def_id === "adhoc" ? ` <button class="small" data-remove="${esc(task.task_id)}">Remove</button>` : "");
-  return `<div class="${classes.join(" ")}" style="--c:var(--sp-${LEAGUE_VAR[task.sport] || SPORT_VAR[task.sport] || "other"})">
-    <div class="meta">
-      <span class="due">${task.due_et ? fmtTime(task.due_et) : "no due time"}</span>
+  // compact card (Chris, 2026-11-12): line 1 due + sport + name, line 2 note + links, line 3 every button
+  const links = (task.resources || []).map((r) => (typeof r === "string" ? { label: r, url: r } : r))
+    .filter((r) => r && /^https?:\/\//i.test(r.url || ""))
+    .map((r) => `<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.label || r.url)}</a>`);
+  const sub = [task.note ? `<span class="note">${esc(task.note)}</span>` : "", links.join(" · ")].filter(Boolean);
+  const stepsBtn = task.steps && task.steps.length ? `<button class="small" data-steps="${esc(task.task_id)}">Steps (${task.steps.length})</button>` : "";
+  return `<div class="${classes.join(" ")} compact" style="--c:var(--sp-${LEAGUE_VAR[task.sport] || SPORT_VAR[task.sport] || "other"})">
+    <div class="t1">
+      <span class="due">${task.due_et ? fmtTime(task.due_et) : "no time"}</span>
       <span class="chip">${esc(task.sport)}</span>
       ${task.kind === "critical" ? '<span class="chip crit">CRITICAL</span>' : ""}
+      ${overdue ? '<span class="chip crit">Overdue</span>' : ""}
       ${task.carried_from ? `<span class="chip">from ${esc(new Date(task.carried_from + "T12:00:00Z").toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short" }))}</span>` : ""}
       ${expired ? '<span class="chip">EXPIRED</span>' : ""}
-      ${overdue ? '<span class="chip crit">Overdue</span>' : ""}
-      ${task.category ? `<span>${esc(task.category)}</span>` : ""}
+      <span class="name" title="${esc(task.category || "")}">${esc(task.name)}</span>
     </div>
-    <div class="name">${esc(task.name)}</div>
-    ${task.note ? `<div class="note">${esc(task.note)}</div>` : ""}
-    ${resourceLinks(task)}
-    ${task.steps && task.steps.length ? `<div class="row"><button class="small" data-steps="${esc(task.task_id)}">Steps (${task.steps.length})</button></div>` : ""}
-    <div class="people">${people}</div>
-    <div class="row">${actionBtn}${jobLine}${secondary}</div>
+    ${sub.length ? `<div class="t2 res">${sub.join(" · ")}</div>` : ""}
+    <div class="t3">${people}${stepsBtn}${actionBtn}${jobLine}${secondary}</div>
   </div>`;
 }
 
