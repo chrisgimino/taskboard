@@ -361,6 +361,18 @@
   .login-badge { width: 64px; height: 64px; border-radius: 14px; display: block; margin: 0 0 14px;
     box-shadow: 0 0 24px rgba(57,135,229,.4); }
   @media (max-width: 600px) { .rail { justify-content: center; gap: 10px; } .rail img { height: 18px; } .rail img.wide { height: 15px; } }
+  /* checklist task */
+  .ck-count { font: 600 12px/1 var(--f-mono); color: var(--accent); }
+  .ck-bar { height: 4px; background: var(--chip); border-radius: 2px; margin: 8px 0 4px; overflow: hidden; }
+  .ck-bar i { display: block; height: 100%; background: var(--ok); }
+  .ck-list summary { cursor: pointer; font: 500 12px/1 var(--f-head); letter-spacing: .12em; text-transform: uppercase;
+    color: var(--muted); padding: 8px 0; }
+  .ck { display: grid; grid-template-columns: 22px 1fr auto; gap: 2px 8px; align-items: center; padding: 7px 4px;
+    border-top: 1px solid var(--line); cursor: pointer; }
+  .ck input { width: 16px; height: 16px; accent-color: var(--ok); }
+  .ck-l { font-weight: 600; } .ck-d { font: 500 12px/1 var(--f-mono); color: var(--muted); text-align: right; }
+  .ck-by { grid-column: 2 / 4; font-size: 11px; color: var(--ok); }
+  .ck.on .ck-l { color: var(--muted); text-decoration: line-through; }
   .hidden { display: none !important; }
 </style>
 </head>
@@ -543,7 +555,8 @@ function statusOf(task) {
   return null;
 }
 function isOverdue(task) {
-  return !statusOf(task) && task.due_et && task.kind !== "placeholder" && new Date(task.due_et) < new Date();
+  return !statusOf(task) && task.due_et && task.kind !== "placeholder" && task.kind !== "checklist"
+    && new Date(task.due_et) < new Date();
 }
 
 // ---- actions --------------------------------------------------------------------
@@ -621,7 +634,53 @@ function openSteps(id) {
   $("stepsModal").showModal();
 }
 
+// ---- checklist tasks (Chris, 2026-11-12): ticks kept per checklist_key, never overdue, dismiss for the day ----
+function checklistCard(task) {
+  const m = statusOf(task);
+  if (task.steps && task.steps.length) stepsById[task.task_id] = task;
+  const ticks = (state.checklists || {})[task.checklist_key] || {};
+  const items = task.checklist || [];
+  const done = items.filter((i) => ticks[i.id]).length;
+  const rows = items.map((i) => {
+    const t = ticks[i.id];
+    return `<label class="ck ${t ? "on" : ""}"><input type="checkbox" data-check="${esc(task.checklist_key)}" data-item="${esc(i.id)}" ${t ? "checked" : ""}>
+      <span class="ck-l">${esc(i.label)}</span><span class="ck-d">${esc(i.detail || "")}</span>
+      ${t ? `<span class="ck-by">${esc(t.by)} ${fmtTime(t.at_et)}</span>` : ""}</label>`;
+  }).join("");
+  const open = store.get("ckopen:" + task.checklist_key) !== "0";
+  return `<div class="task checklist ${m ? "closed" : ""}" style="--c:var(--sp-${LEAGUE_VAR[task.sport] || SPORT_VAR[task.sport] || "other"})">
+    <div class="meta"><span class="chip">${esc(task.sport)}</span><span class="chip">Checklist</span>
+      <span class="ck-count">${done} / ${items.length} done</span>${task.category ? `<span>${esc(task.category)}</span>` : ""}</div>
+    <div class="name">${esc(task.name)}</div>
+    ${task.note ? `<div class="note">${esc(task.note)}</div>` : ""}
+    <div class="ck-bar"><i style="width:${items.length ? Math.round(100 * done / items.length) : 0}%"></i></div>
+    <details class="ck-list" data-ckkey="${esc(task.checklist_key)}" ${open ? "open" : ""}><summary>Games (${items.length})</summary>${rows || '<div class="empty">No games on DK / FD slates yet.</div>'}</details>
+    <div class="row">
+      ${task.steps && task.steps.length ? `<button class="small" data-steps="${esc(task.task_id)}">Steps (${task.steps.length})</button>` : ""}
+      ${m ? `<span class="person closer">dismissed by ${esc(m.user)} ${fmtTime(m.at_et)}</span>
+             <button class="small" data-mark="open" data-task="${esc(task.task_id)}">Bring back</button>`
+          : `<button class="small" data-mark="dismissed" data-task="${esc(task.task_id)}">Dismiss for today</button>`}
+    </div>
+  </div>`;
+}
+document.addEventListener("change", async (e) => {
+  const el = e.target.closest("input[data-check]");
+  if (!el) return;
+  const key = el.dataset.check, item = el.dataset.item, on = el.checked;
+  try {
+    const r = await api({ op: "check", key, item, checked: on });
+    state.checklists = state.checklists || {};
+    state.checklists[key] = r.items || {};
+    render();
+  } catch (err) { el.checked = !on; $("subline").textContent = err.message; }
+});
+document.addEventListener("toggle", (e) => {
+  const d = e.target;
+  if (d.classList && d.classList.contains("ck-list")) store.set("ckopen:" + d.dataset.ckkey, d.open ? "1" : "0");
+}, true);
+
 function taskCard(task) {
+  if (task.kind === "checklist") return checklistCard(task);
   const m = statusOf(task);
   if (task.steps && task.steps.length) stepsById[task.task_id] = task;
   const overdue = isOverdue(task);
