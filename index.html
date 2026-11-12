@@ -755,7 +755,10 @@
   .cov-s.cov-nba { color: var(--accent); border-color: var(--accent); }
   .cov-gap { font-size: 10px; margin-top: 2px; white-space: nowrap; }
   table.cov tr.cov-we td { background: color-mix(in srgb, var(--accent) 4%, var(--card)); }
-  table.cov { min-width: 900px; }
+  table.cov.cov-wide { min-width: 1250px; }
+  table.cov th:first-child, table.cov td:first-child { width: 130px; }
+  .cov-n { font-size: 12.5px; line-height: 1.45; white-space: nowrap; color: var(--ink); }
+  .cov-g { font-family: var(--f-mono); font-size: 11px; color: var(--accent); margin-bottom: 2px; }
   .hidden { display: none !important; }
 </style>
 </head>
@@ -1614,50 +1617,77 @@ function slackMd(t) {   // the reports use Slack markup: *bold*, _italic_
     .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
 }
 // ---- Coverage (Chris, 2026-11-12): staff schedule from s3://rg-gimino/board/coverage/<sport>.json ----
-let covWho = store.get("covWho") || "All";
+let covWho = store.get("covWho2") || "All";
 let covPast = false;
+let covPerson = store.get("covPerson") || "Everyone";
+let covGaps = false;
+// by sport (Chris, 2026-11-12): one column per sport, the people on it that day
+const COV_SPORTS = ["NBA", "NHL", "NFL", "CFB", "CBB", "Golf", "Soccer", "Tennis", "MMA", "F1", "LoL", "CS2", "Data update"];
+function covBySport(ppl) {
+  const out = {};
+  const add = (sp, txt, rank) => (out[sp] = out[sp] || []).push([rank, txt]);
+  for (const [who, tags] of Object.entries(ppl || {})) {
+    for (const t of tags) {
+      if (t === "NBA night") add("NBA", `${who} · night`, 0);
+      else if (t === "NBA day") add("NBA", `${who} · day`, 1);
+      else if (t === "NBA lineups") add("NBA", `${who} · lineups`, 3);
+      else if (t === "NFL lineups") add("NFL", `${who} · lineups`, 3);
+      else add(t, who, 2);
+    }
+  }
+  for (const k in out) out[k] = out[k].sort((x, y) => x[0] - y[0]).map((x) => x[1]);
+  return out;
+}
 function coverageTab() {
   const c = (state.coverage || {}).nba;
   if (!c) return `<div class="empty">No coverage schedule saved yet</div>`;
   const today = state.date;
-  const people = c.people || ["Kyle", "Jim", "Tim"];
   const isWknd = (d) => [0, 6].includes(new Date(d.date + "T12:00:00Z").getUTCDay());
   const gaps = c.days.filter((d) => d.gap).length;
-  if (covWho !== "All" && covWho !== "Gaps" && !people.includes(covWho)) covWho = "All";
-  const filt = ["All", ...people, "Gaps"].map((w) => `<button data-covwho="${w}" class="${w === covWho ? "on" : ""}">${w === "Gaps" ? `NBA day gaps (${gaps})` : w}</button>`).join("");
-  const cols = people.includes(covWho) ? [covWho] : people;
+  // one sport at a time (Chris, 2026-11-12); people filter on top; "day gaps" only for NBA
+  if (!COV_SPORTS.includes(covWho)) covWho = "NBA";
+  const filt = COV_SPORTS.map((w) => `<button data-covwho="${w}" class="${w === covWho ? "on" : ""}">${w}</button>`).join("")
+    + (covWho === "NBA" ? `<button data-covgaps="1" class="${covGaps ? "on" : ""}">Day gaps (${gaps})</button>` : "");
+  const peopleList = c.people || [];
+  if (covPerson !== "Everyone" && !peopleList.includes(covPerson)) covPerson = "Everyone";
+  const pfilt = ["Everyone", ...peopleList].map((w) => `<button data-covperson="${w}" class="${w === covPerson ? "on" : ""}">${w}</button>`).join("");
+  const mine = (d) => covPerson === "Everyone" ? d.people : { [covPerson]: (d.people || {})[covPerson] || [] };
+  const cols = [covWho];
   const weekOf = (iso) => { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return d.toISOString().slice(0, 10); };
   const thisWeek = weekOf(today);
-  const chip = (t) => `<span class="cov-s ${/^NBA (night|day)$/.test(t) ? "cov-nba" : ""}">${esc(t)}</span>`;
   let rows = "", lastWeek = "", hidden = 0;
   for (const d of c.days) {
     const wk = weekOf(d.date);
     if (!covPast && wk < thisWeek) { hidden++; continue; }
-    const ppl = d.people || {};
-    if (covWho === "Gaps" && !d.gap) continue;
-    if (people.includes(covWho) && !(ppl[covWho] || []).length) continue;
+    const by = covBySport(mine(d));
+    if (covWho === "NBA" && covGaps && !d.gap) continue;
+    if (!(by[covWho] || []).length && !(covWho === "NBA" && d.gap && covPerson === "Everyone")) continue;
     if (wk !== lastWeek) {
       lastWeek = wk;
       const lbl = new Date(wk + "T12:00:00Z").toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric" });
-      rows += `<tr class="cov-wk"><td colspan="${cols.length + 2}">Week of ${lbl}</td></tr>`;
+      rows += `<tr class="cov-wk"><td colspan="${cols.length + 1}">Week of ${lbl}</td></tr>`;
     }
     const dl = new Date(d.date + "T12:00:00Z").toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short", month: "numeric", day: "numeric" });
-    const g = d.games_note ? `<span class="cov-tbd">Cup TBD</span>` : (d.games || "–");
-    rows += `<tr class="${d.date === today ? "cov-today" : ""} ${isWknd(d) ? "cov-we" : ""}">
-      <td>${dl}</td><td class="cov-g">${g}${d.gap ? `<div class="cov-gap">no day shift</div>` : ""}</td>
-      ${cols.map((p) => `<td>${(ppl[p] || []).map(chip).join("")}</td>`).join("")}</tr>`;
+    const nbaHead = covPerson !== "Everyone" ? "" : d.games_note ? `<div class="cov-tbd">Cup TBD</div>` : (d.games ? `<div class="cov-g">${d.games} games</div>` : "");
+    const cell = (sp) => (sp === "NBA" ? nbaHead : "") + (by[sp] || []).map((x) => `<div class="cov-n">${esc(x)}</div>`).join("")
+      + (sp === "NBA" && d.gap && covPerson === "Everyone" ? `<div class="cov-gap">no day shift</div>` : "");
+    rows += `<tr class="${d.date === today ? "cov-today" : ""} ${isWknd(d) ? "cov-we" : ""}"><td>${dl}</td>${cols.map((sp) => `<td>${cell(sp)}</td>`).join("")}</tr>`;
   }
   const first = c.days[0].date, last = c.days[c.days.length - 1].date;
   const fmt = (iso) => new Date(iso + "T12:00:00Z").toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric" });
-  return `<h2>${esc(c.title || "Coverage")} · ${fmt(first)} – ${fmt(last)}</h2>
-    <div class="filters cov-filt">${filt}${hidden || covPast ? `<button data-covpast="1" class="${covPast ? "on" : ""}">${covPast ? "Hide past" : "Show past"}</button>` : ""}</div>
-    <div class="cov-wrap"><table class="cov"><thead><tr><th>Date</th><th>NBA games</th>${cols.map((p) => `<th>${esc(p)}</th>`).join("")}</tr></thead>
-    <tbody>${rows || `<tr><td colspan="${cols.length + 2}">Nothing to show</td></tr>`}</tbody></table></div>
+  return `<h2>Coverage · ${fmt(first)} – ${fmt(last)}</h2>
+    <div class="filters cov-filt">${filt}</div>
+    <div class="filters cov-filt">${pfilt}${hidden || covPast ? `<button data-covpast="1" class="${covPast ? "on" : ""}">${covPast ? "Hide past" : "Show past"}</button>` : ""}</div>
+    <div class="cov-wrap"><table class="cov"><thead><tr><th>Date</th>${cols.map((sp) => `<th>${esc(sp)}</th>`).join("")}</tr></thead>
+    <tbody>${rows || `<tr><td colspan="${cols.length + 1}">Nothing to show</td></tr>`}</tbody></table></div>
     <details class="cov-rules"><summary>Rules</summary><ul>${(c.rules || []).map((r) => `<li>${esc(r)}</li>`).join("")}</ul></details>`;
 }
 document.addEventListener("click", (e) => {
   const w = e.target.closest("[data-covwho]");
-  if (w) { covWho = w.dataset.covwho; store.set("covWho", covWho); render(); return; }
+  if (w) { covWho = w.dataset.covwho; store.set("covWho2", covWho); render(); return; }
+  const pp = e.target.closest("[data-covperson]");
+  if (pp) { covPerson = pp.dataset.covperson; store.set("covPerson", covPerson); render(); return; }
+  if (e.target.closest("[data-covgaps]")) { covGaps = !covGaps; render(); return; }
   if (e.target.closest("[data-covpast]")) { covPast = !covPast; render(); }
 });
 
