@@ -651,7 +651,7 @@ function taskCard(task) {
       ${task.kind === "critical" ? '<span class="chip crit">CRITICAL</span>' : ""}
       ${task.carried_from ? `<span class="chip">from ${esc(new Date(task.carried_from + "T12:00:00Z").toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short" }))}</span>` : ""}
       ${expired ? '<span class="chip">EXPIRED</span>' : ""}
-      ${overdue ? '<span class="chip crit">On the clock</span>' : ""}
+      ${overdue ? '<span class="chip crit">Overdue</span>' : ""}
       ${task.category ? `<span>${esc(task.category)}</span>` : ""}
     </div>
     <div class="name">${esc(task.name)}</div>
@@ -671,9 +671,9 @@ function taskList(tasks) {
   const upcoming = open.filter((t) => t.kind !== "critical" && !isOverdue(t));
   let html = "";
   if (critical.length) html += `<h2 class="hot">Critical</h2>` + critical.map(taskCard).join("");
-  if (overdue.length) html += `<h2 class="hot">On the clock · overdue</h2>` + overdue.map(taskCard).join("");
+  if (overdue.length) html += `<h2 class="hot">Overdue</h2>` + overdue.map(taskCard).join("");
   html += `<h2>Up next</h2>` + (upcoming.length ? upcoming.map(taskCard).join("") : `<div class="empty">Nothing open.</div>`);
-  html += `<h2>Picks in (${closed.length}) <button class="linkbtn" id="toggleClosed">${showClosed ? "hide" : "show"}</button></h2>`;
+  html += `<h2>Closed (${closed.length}) <button class="linkbtn" id="toggleClosed">${showClosed ? "hide" : "show"}</button></h2>`;
   if (showClosed) html += closed.map(taskCard).join("") || `<div class="empty">None yet.</div>`;
   return html;
 }
@@ -714,10 +714,10 @@ function render() {
   const crit = open.filter((t) => t.kind === "critical").length;
   const done = tasks.filter((t) => statusOf(t)?.status === "done").length;
   $("summary").innerHTML =
-    `<div class="stat ${overdue ? "bad" : ""}"><b>${overdue}</b><span>On the clock</span></div>` +
+    `<div class="stat ${overdue ? "bad" : ""}"><b>${overdue}</b><span>Overdue</span></div>` +
     `<div class="stat ${crit ? "bad" : ""}"><b>${crit}</b><span>Critical</span></div>` +
     `<div class="stat gold"><b>${open.length}</b><span>Open</span></div>` +
-    `<div class="stat ok"><b>${done}</b><span>Picks in</span></div>`;
+    `<div class="stat ok"><b>${done}</b><span>Done</span></div>`;
   $("addTaskBtn").classList.toggle("hidden", !state.admin);
   document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === tab));
   document.body.classList.toggle("wide", tab === "schedule" || (tab === "sport" && deskView === "columns")
