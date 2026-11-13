@@ -1130,7 +1130,7 @@ function renderStatic() {
     $("h" + t).textContent = $("h" + t + "t").textContent = t === 0 ? `◀ ${tShort(t).toUpperCase()} SHOOTS THIS WAY` : `${tShort(t).toUpperCase()} SHOOTS THIS WAY ▶`;
   }
   const R = STD(), si = R ? R.sim_index : rp.sim_index, ns = R ? R.sims : rp.sims;
-  $("simLbl").textContent = `typical game · ${(si ?? 0) + 1} of ${(ns || 0).toLocaleString()}`;
+  $("simLbl").textContent = `typical game`;
   $("scrub").max = Math.ceil(S.endT);
   $("ticks").innerHTML = [0, ...S.periods.slice(0, -1)].map((t, i) => `<span style="left:${100 * t / S.endT}%">${i < 4 ? "Q" + (i + 1) : "OT"}</span>`).join("");
   $("legend").innerHTML = `<span><i style="background:var(--t0)"></i>${esc(tShort(0))} ← left</span><span><i style="background:var(--t1)"></i>${esc(tShort(1))} right →</span><span>● made</span><span>✕ missed</span><span>shot chart at the final</span>`;
@@ -1912,7 +1912,7 @@ function moments() {   // the moments of the replayed game, by event index; pr 3
     if (scored) {
       const p = e.type === "shot" ? e.pts : 1, o = e.team;
       if (!firstDone) { firstDone = true; const s = fbShare(e.player), f = fav();
-        add(3, `First basket · ${lastName(e.player)}`, s !== null ? `<b>${(100 * s).toFixed(1)}%</b> of ${N} sims${f && f[0] !== nm(e.player) ? ` · sims' favorite ${esc(f[0].split(" ").slice(-1)[0])} ${(100 * f[1]).toFixed(1)}%` : " · the sims' favorite"}` : "first points of the game"); }
+        add(3, `First basket · ${lastName(e.player)}`, s !== null ? `<b>${(100 * s).toFixed(1)}%</b> of sims${f && f[0] !== nm(e.player) ? ` · sims' favorite ${esc(f[0].split(" ").slice(-1)[0])} ${(100 * f[1]).toFixed(1)}%` : " · the sims' favorite"}` : "first points of the game"); }
       run[o] += p; run[1 - o] = 0;
       if (run[o] >= 8 && run[o] - runMark >= 4 && run[1 - o] === 0) { runMark = run[o]; add(2, `${tShort(o)} on a ${run[o]}-0 run`, `${e.score[0]}-${e.score[1]} · Q${Math.min(e.period, 5)} ${e.clock}`); }
       if (run[o] === p) runMark = 0;
@@ -2134,8 +2134,8 @@ function renderBets() {
   if (S.betC.bk !== S.book) { S.betC.bk = S.book; S.betC.at = S.book ? S.betC.list.flatMap(x => candAt(x, S.book)) : S.betC.list; }
   const C = S.betC.at, sc = S.tr.sc, byEv = (a, b) => (b.ev ?? -9) - (a.ev ?? -9);
   sub.innerHTML = mode === "trial"
-    ? `This sim: <b>${esc(tShort(0))} ${sc[0]}-${sc[1]} ${esc(tShort(1))}</b>${S.tr.ot ? " (OT)" : ""}. In each market, the bet this game cashes with the best edge over all ${N} sims. Watch them cash as it plays.`
-    : `The best edge in each market over all ${N} sims, ${S.book ? "at " + esc(S.book) + "'s prices" : "at the best price across the books"}. Tap a price to bet it.`;
+    ? `This sim: <b>${esc(tShort(0))} ${sc[0]}-${sc[1]} ${esc(tShort(1))}</b>${S.tr.ot ? " (OT)" : ""}. In each market, the bet this game cashes with the best edge over all the sims. Watch them cash as it plays.`
+    : `The best edge in each market over all the sims, ${S.book ? "at " + esc(S.book) + "'s prices" : "at the best price across the books"}. Tap a price to bet it.`;
   const rows = BET_CATS.map(([key, label]) => {
     const xs = C.filter(x => x.cat === key);
     const pick = mode === "trial"
