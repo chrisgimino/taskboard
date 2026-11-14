@@ -782,6 +782,24 @@
     color: var(--accent-ink, #0c1419); background: var(--accent); border: 1px solid var(--accent); }
   .steps-btn:hover { filter: brightness(1.12); }
   @media (max-width: 600px) { .steps-btn { padding: 7px 12px; font-size: 10px; } }
+  /* CFB Shares panel (2026-11-14) */
+  dialog.modal.cfb { width: min(980px, calc(100vw - 24px)); max-width: none; }
+  .cfb .teams { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+  .cfb .teams button { font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer; }
+  .cfb .teams button.on { background: var(--accent, #2bd4e6); color: #000; }
+  .cfb select { font: inherit; font-size: 13px; padding: 4px; background: var(--card); color: var(--ink); border: 1px solid var(--line); }
+  .cfb .news label { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--ink); margin: 4px 0; }
+  .cfb .news .dim { opacity: .55; }
+  .cfb .tblwrap { overflow-x: auto; max-height: 52vh; overflow-y: auto; border: 1px solid var(--line); margin-top: 8px; }
+  .cfb table { border-collapse: collapse; font-size: 12px; width: 100%; }
+  .cfb th, .cfb td { padding: 4px 6px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+  .cfb th { position: sticky; top: 0; background: var(--card); z-index: 2; }
+  .cfb td.nm, .cfb th.nm { text-align: left; position: sticky; left: 0; background: var(--card); z-index: 1; }
+  .cfb th.nm { z-index: 3; }
+  .cfb td.chg { color: var(--accent, #2bd4e6); font-weight: 700; }
+  .cfb td input { width: 52px; font: inherit; font-size: 12px; padding: 2px; background: var(--card); color: var(--ink); border: 1px solid var(--line); }
+  .cfb textarea { width: 100%; height: 120px; font-family: monospace; font-size: 12px; }
+  .cfb .flags li { font-size: 12px; margin: 2px 0; }
   .hidden { display: none !important; }
 </style>
 </head>
@@ -805,6 +823,7 @@
           <div class="hdr-actions">   <!-- moved to the top strip (2026-11-12): frees the header row -->
             <button class="linkbtn hidden" id="addTaskBtn">+ Add task</button>
             <button class="linkbtn hidden" id="namesBtn" title="Show every name on tasks, or just a Done button">Names</button>
+            <button class="linkbtn" id="cfbBtn" title="CFB news → suggested market-share edits for the CFB sheet">CFB Shares</button>
             <button class="linkbtn" id="themeBtn" title="Light / dark mode">Dark</button>
             <button class="linkbtn" id="signOut">Sign out</button>
           </div>
@@ -855,6 +874,15 @@
   <ol class="steps" id="stepsList"></ol>
   <div id="stepsRes"></div>
   <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="small" id="stepsClose">Close</button></div>
+</dialog>
+
+<dialog id="cfbModal" class="modal cfb">
+  <div class="row" style="justify-content:space-between;align-items:center;gap:8px">
+    <h3 style="margin:0">CFB Shares</h3>
+    <span class="note" id="cfbMeta"></span>
+    <span><button class="small" id="cfbRefresh">Refresh</button> <button class="small" id="cfbClose">Close</button></span>
+  </div>
+  <div id="cfbBody"><p class="note">Loading…</p></div>
 </dialog>
 
 <dialog id="addTask" class="modal">
@@ -1180,6 +1208,8 @@ function taskCard(task) {
   const sub = [task.note ? `<span class="note">${esc(task.note)}</span>` : "", links.join(" · ")].filter(Boolean);
   // Steps sits on the links row as a real button (Chris, 2026-11-12)
   const stepsBtn = task.steps && task.steps.length ? `<button class="steps-btn" data-steps="${esc(task.task_id)}">Steps (${task.steps.length})</button>` : "";
+  const cfbPlayer = task.sport === "CFB" && task.kind === "news" ? cfbParseLine(task.name) : null;
+  const cfbBtnHtml = cfbPlayer ? `<button class="steps-btn" data-cfb="${esc(cfbPlayer.player)}">Shares</button>` : "";
   return `<div class="${classes.join(" ")} compact" style="--c:var(--sp-${LEAGUE_VAR[task.sport] || SPORT_VAR[task.sport] || "other"})">
     <div class="t1">
       <span class="due">${task.due_et ? fmtTime(task.due_et) : "no time"}</span>
@@ -1190,7 +1220,7 @@ function taskCard(task) {
       ${expired ? '<span class="chip">EXPIRED</span>' : ""}
       <span class="name" title="${esc(task.category || "")}">${esc(task.name)}</span>
     </div>
-    ${sub.length || stepsBtn ? `<div class="t2 res">${stepsBtn}${sub.join(" · ")}</div>` : ""}
+    ${sub.length || stepsBtn || cfbBtnHtml ? `<div class="t2 res">${stepsBtn}${cfbBtnHtml}${sub.join(" · ")}</div>` : ""}
     <div class="t3">${people}${actionBtn}${jobLine}${secondary}</div>
   </div>`;
 }
@@ -1661,6 +1691,8 @@ function covBySport(ppl, day) {
     }
   }
   for (const k in out) out[k] = out[k].sort((x, y) => x[0] - y[0]).map((x) => x[1]);
+  // CS2 only on dates with a CS slate on the RG slates page (Chris, 2026-11-12)
+  if (day && out.CS2 && !((state.slate_days || {}).CS || []).includes(day.date)) delete out.CS2;
   // no NBA games that day: no Fahad / Naap on NBA (Chris, 2026-11-12)
   if (day && out.NBA && !day.games && !day.games_note) {
     out.NBA = out.NBA.filter((x) => !/^(Fahad|Naap)\b/.test(x));
@@ -1924,6 +1956,329 @@ function cdTick() {
   }
 }
 setInterval(() => { cdChips(); cdTick(); }, 1000);
+
+// ---- CFB Shares panel (Chris/Tuttle, 2026-11-14): CFB news -> suggested Pass%..ReTD% edits for the CFB sheet ----
+// CFB market-share math for the board's "CFB Shares" panel (Chris/Tuttle, 2026-11-14).
+// Rules from Tuttle's W11 handoff (HANDOFF_W11.md):
+//   OUT       placeholder: 0.1 Tgt, zeros elsewhere
+//   DOUBTFUL  built as out: 0.2 Tgt / 0.1 ReTD, no rush
+//   Q / GTD   15% dock on Rush, RuTD, Tgt, ReTD; freed share redistributed
+//   IN        PROBABLE / AVAILABLE: a placeholder goes back to his pre-absence role (recent weeks, editable);
+//             a docked player is undocked (/0.85). The share comes back from the same group.
+//   QB        OUT/D -> backup 100% pass; Q starter -> 35/65; IN starter -> 90/10 with a healthy backup.
+//             QBs' combined rush share held constant (the backup takes the starter's rush share).
+//   Freed share stays role-adjacent: same position group first (group totals stable); RB1 out -> RB2 ~70%,
+//   the rest to RB3/RB4 and ~1 point to the QB; RB2 out -> mainly RB1 but no back absorbs 85%+ of it.
+// Columns: 0 Pass, 1 Rush, 2 RuTD, 3 Tgt, 4 ReTD. Values are percents (27.9 = 27.9%).
+const CFB_COLS = ["Pass%", "Rush%", "RuTD%", "Tgt%", "ReTD%"];
+const CFB_SAME_GROUP = 0.8;       // receiving share freed by a WR/TE: 80% to his own group (Harbor v2->v3 was 80%)
+const CFB_DOCK = 0.15;
+
+function cfbIsSkill(r) { return ["QB", "RB", "WR", "TE"].includes(r.pos); }
+function cfbDepth(r, i) { const d = parseFloat(r.depth); return isFinite(d) ? d : 100 + i; }
+
+// spread `amount` of column c over recipients (indexes) by weights; returns what could not be placed
+function cfbSpread(v, c, amount, idxs, weightFn) {
+  const w = idxs.map((i) => Math.max(0, weightFn(i)));
+  const tot = w.reduce((a, b) => a + b, 0);
+  if (!(amount > 0) || !idxs.length) return amount;
+  if (tot <= 0) { idxs.forEach((i) => { v[i][c] += amount / idxs.length; }); return 0; }
+  idxs.forEach((i, k) => { v[i][c] += amount * w[k] / tot; });
+  return 0;
+}
+
+// rows: [{name,pos,depth,s:[5],wk:[[week,tgt%,ru%,played],...]}]  (sheet order, totals row excluded)
+// changes: {index: {mode: "OUT"|"DOUBTFUL"|"Q"|"IN", target: [5] (IN only, optional)}}
+function cfbCalc(rows, changes) {
+  const v = rows.map((r) => r.s.slice());
+  const flags = [];
+  const mode = (i) => (changes[i] || {}).mode;
+  const gone = (i) => ["OUT", "DOUBTFUL"].includes(mode(i));
+  const group = (pos, skip) => rows.map((r, i) => i).filter((i) => rows[i].pos === pos && i !== skip && !gone(i));
+  const has = (i, c) => v[i][c] > 0.2001;                    // a real number, not a placeholder
+  const byDepth = (idxs) => idxs.slice().sort((a, b) => cfbDepth(rows[a], a) - cfbDepth(rows[b], b));
+  const origTotal = [0, 1, 2, 3, 4].map((c) => rows.reduce((a, r) => a + r.s[c], 0));
+
+  // where freed share of column c from player p goes
+  function place(p, c, amount) {
+    if (!(amount > 0.0001)) return;
+    const pos = rows[p].pos;
+    if (c === 0) {                                   // Pass%: QBs only
+      const qbs = byDepth(group("QB", p));
+      if (!qbs.length) { v[p][c] += amount; flags.push(`${rows[p].name}: no other QB in the sheet for Pass% — add the backup's row`); return; }
+      const withNum = qbs.filter((i) => has(i, 0));
+      cfbSpread(v, 0, amount, withNum.length ? withNum : [qbs[0]], (i) => v[i][0] || 1);
+      return;
+    }
+    if (c === 1 || c === 2) {                        // Rush / RuTD
+      if (pos === "RB") {
+        // backfield order = current Rush% (the role), not the Depth column
+        const byRush = (a, b) => rows[b].s[1] - rows[a].s[1] || cfbDepth(rows[a], a) - cfbDepth(rows[b], b);
+        const rbs = group("RB", p).filter((i) => has(i, c) || has(i, 1)).sort(byRush);
+        const qbs = group("QB", p).filter((i) => has(i, c));
+        const isRB1 = rows[p].s[1] >= Math.max(0, ...group("RB", p).map((i) => rows[i].s[1]));
+        let left = amount;
+        if (qbs.length && isRB1) { const q = Math.min(1.0, amount * 0.1); cfbSpread(v, c, q, qbs, (i) => v[i][c]); left -= q; }
+        if (!rbs.length) {
+          flags.push(`${rows[p].name}: no other RB with a share — add an RB depth row (never a QB as RB depth)`);
+          const others = rows.map((r, i) => i).filter((i) => i !== p && !gone(i) && has(i, c));
+          cfbSpread(v, c, left, others.length ? others : [p], (i) => v[i][c]);
+          return;
+        }
+        if (isRB1) {                                  // RB1 out: next back ~70%, the rest to RB3/RB4
+          const [next, ...rest] = rbs;
+          if (rest.length) { v[next][c] += left * 0.7; cfbSpread(v, c, left * 0.3, rest, (i) => v[i][c] || 0.5); }
+          else { v[next][c] += left; flags.push(`${rows[p].name} out: ${rows[next].name} is the only other back — consider an RB3/RB4 depth row`); }
+        } else {                                      // RB2+ out: mainly RB1, but no back takes 85%+ of it
+          const w = rbs.map((i) => v[i][c] || 0.5);
+          const tot = w.reduce((a, b) => a + b, 0);
+          let share = w.map((x) => x / tot);
+          if (share[0] > 0.6 && rbs.length > 1) {
+            const extra = share[0] - 0.6; share[0] = 0.6;
+            const restTot = share.slice(1).reduce((a, b) => a + b, 0) || 1;
+            share = share.map((x, k) => (k === 0 ? x : x + extra * (x || 1 / (rbs.length - 1)) / restTot));
+          } else if (rbs.length === 1) flags.push(`${rows[p].name} out: one back left — add an RB3/RB4 depth row`);
+          rbs.forEach((i, k) => { v[i][c] += left * share[k]; });
+        }
+        return;
+      }
+      if (pos === "QB") {                             // QBs' combined rush share held constant
+        const qbs = byDepth(group("QB", p));
+        if (qbs.length) { v[qbs[0]][c] += amount; return; }
+        const rbs = group("RB", p).filter((i) => has(i, c));
+        cfbSpread(v, c, amount, rbs, (i) => v[i][c]);
+        return;
+      }
+      const others = rows.map((r, i) => i).filter((i) => i !== p && !gone(i) && has(i, c));
+      cfbSpread(v, c, amount, others, (i) => v[i][c]);
+      return;
+    }
+    // Tgt / ReTD: role-adjacent — own group first, the rest to the other receivers (RBs by their own target share)
+    const recv = (i) => i !== p && !gone(i) && rows[i].pos !== "QB" && cfbIsSkill(rows[i]) && has(i, c);
+    const same = rows.map((r, i) => i).filter((i) => recv(i) && rows[i].pos === pos);
+    const other = rows.map((r, i) => i).filter((i) => recv(i) && rows[i].pos !== pos);
+    const flat = (i) => Math.pow(v[i][c], 0.7);       // flattened: depth players gain more than straight proportional
+    if (!same.length) { cfbSpread(v, c, amount, other, (i) => (rows[i].pos === "RB" ? v[i][c] : flat(i))); return; }
+    if (!other.length) { cfbSpread(v, c, amount, same, flat); return; }
+    cfbSpread(v, c, amount * CFB_SAME_GROUP, same, flat);
+    cfbSpread(v, c, amount * (1 - CFB_SAME_GROUP), other, (i) => (rows[i].pos === "RB" ? v[i][c] : flat(i)));
+  }
+
+  // take `amount` of column c back for player p (IN), from his own group first
+  function takeBack(p, c, amount) {
+    if (!(amount > 0.0001)) return;
+    const pos = rows[p].pos;
+    const ok = (i) => i !== p && !gone(i) && mode(i) !== "IN" && has(i, c);
+    let pool = rows.map((r, i) => i).filter((i) => ok(i) && rows[i].pos === pos);
+    if (c === 0) pool = rows.map((r, i) => i).filter((i) => ok(i) && rows[i].pos === "QB");
+    if (!pool.length || pool.reduce((a, i) => a + v[i][c] - 0.1, 0) < amount) pool = rows.map((r, i) => i).filter(ok);
+    const room = pool.map((i) => Math.max(0, v[i][c] - 0.1));
+    const tot = room.reduce((a, b) => a + b, 0);
+    if (tot <= 0) { flags.push(`${rows[p].name}: nobody to take ${CFB_COLS[c]} back from`); return; }
+    const take = Math.min(amount, tot);
+    pool.forEach((i, k) => { v[i][c] -= take * room[k] / tot; });
+    v[p][c] += take;
+  }
+
+  const idx = Object.keys(changes).map(Number).filter((i) => changes[i] && changes[i].mode);
+  // 1) QB passing splits
+  for (const p of idx.filter((i) => rows[i].pos === "QB")) {
+    const qbs = byDepth(rows.map((r, i) => i).filter((i) => rows[i].pos === "QB" && i !== p && !gone(i)));
+    const m = mode(p), backup = qbs[0];
+    if (m === "Q" && backup !== undefined) {
+      const tot = v[p][0] + v[backup][0];
+      v[p][0] = tot * 0.35; v[backup][0] = tot * 0.65;
+      flags.push(`${rows[p].name} Q: Pass% 35/65 with ${rows[backup].name} — lean toward whichever way reporting points`);
+    }
+    if (m === "IN" && backup !== undefined && v[p][0] <= 0.2001) {
+      const tot = v[p][0] + v[backup][0];
+      v[p][0] = tot * 0.9; v[backup][0] = tot * 0.1;
+      flags.push(`${rows[p].name} back: Pass% 90/10 with ${rows[backup].name}`);
+    }
+    if (gone(p) && backup !== undefined)
+      flags.push(`${rows[p].name} out: ${rows[backup].name} takes Pass% and his rush share. Team block (not in these columns): backup QB Run +2, Pass Y/A −0.4 to −0.6`);
+  }
+  // 2) OUT / DOUBTFUL / Q
+  for (const p of idx) {
+    const m = mode(p);
+    if (m === "OUT" || m === "DOUBTFUL") {
+      const keep = m === "OUT" ? [0, 0, 0, 0.1, 0] : [0, 0, 0, 0.2, 0.1];
+      for (let c = 0; c < 5; c++) { const freed = v[p][c] - keep[c]; v[p][c] = keep[c]; if (freed > 0) place(p, c, freed); }   // a new 0.1/0.2 placeholder comes off the largest share at rounding
+      const pos = rows[p].pos;
+      if (pos === "RB" && rows[p].s[1] >= 25) flags.push(`Team block: lead back ${rows[p].name} out — Rush YPC −0.1 to −0.3`);
+      if (pos === "WR" && rows[p].s[3] >= 15) flags.push(`Team block: top WR ${rows[p].name} out — Pass Y/A −0.1 (WR1 alpha −0.3)`);
+    } else if (m === "Q") {
+      for (const c of [1, 2, 3, 4]) { const freed = v[p][c] * CFB_DOCK; if (freed > 0) { v[p][c] -= freed; place(p, c, freed); } }
+    }
+  }
+  // 3) IN: placeholder -> target (pre-absence role); docked -> /0.85
+  for (const p of idx.filter((i) => mode(i) === "IN")) {
+    const t = (changes[p] || {}).target;
+    const placeholder = Math.max(...rows[p].s) <= 0.2001;
+    for (let c = 0; c < 5; c++) {
+      if (c === 0 && rows[p].pos === "QB") continue;     // QB pass handled above
+      const want = placeholder ? (t ? t[c] : v[p][c]) : v[p][c] / (1 - CFB_DOCK);
+      if (want > v[p][c]) takeBack(p, c, want - v[p][c]);
+    }
+    if (!placeholder) flags.push(`${rows[p].name}: undocked (÷0.85) — assumes he was docked 15% for Q`);
+  }
+  // 4) round to 0.1, each column back to its original total (100.0), largest share takes the rounding
+  for (let c = 0; c < 5; c++) {
+    v.forEach((x) => { x[c] = Math.max(0, Math.round(x[c] * 10) / 10); });
+    const want = Math.round(origTotal[c] * 10) / 10;
+    const got = v.reduce((a, x) => a + x[c], 0);
+    const diff = Math.round((want - got) * 10) / 10;
+    if (diff) { const big = v.reduce((b, x, i) => (x[c] > v[b][c] ? i : b), 0); v[big][c] = Math.round((v[big][c] + diff) * 10) / 10; }
+    const seen = {};
+    v.forEach((x, i) => { const k = x[c].toFixed(1); if (x[c] > 0.2 && seen[k] !== undefined) flags.push(`${CFB_COLS[c]}: ${rows[seen[k]].name} and ${rows[i].name} both ${k} — nudge one by 0.1`); seen[k] = i; });
+  }
+  return { v, flags: [...new Set(flags)] };
+}
+
+// IN target from the team's latest weeks (weeks he played): Rush/RuTD from Ru%, Tgt/ReTD from Tgt%
+function cfbInTarget(r) {
+  const played = (r.wk || []).filter((w) => w[3]);
+  if (!played.length) return null;
+  const avg = (k) => Math.round(played.reduce((a, w) => a + w[k], 0) / played.length * 10) / 10;
+  const ru = avg(2), tg = avg(1);
+  return [r.s[0], ru, ru, tg, tg];
+}
+
+
+const CFB_MODES = ["", "OUT", "DOUBTFUL", "Q", "IN"];
+const CFB_SUGGEST_LABEL = { OUT: "OUT", DOUBTFUL: "DOUBTFUL", Q: "Q (15% dock)", IN: "IN (full role)" };
+let cfbData = null, cfbAt = 0, cfbTeam = "", cfbChanges = {}, cfbChecked = {};
+function cfbParseLine(line) {
+  const m = String(line || "").match(/^\S+\s+(\S+)\s+(\S+)\s+(.+?)\s+—\s+(?:added:\s*([A-Z ]+?)|([A-Z ]+?)\s*→\s*([A-Z ]+?))\s*(?:·|$)/);
+  return m ? { player: m[3].replace(/\s+/g, " ").trim() } : null;
+}
+function cfbRows(team) { return ((cfbData && cfbData.teams[team]) || []).filter((r) => r.pos.toLowerCase() !== "totals"); }
+async function cfbLoad(force) {
+  if (!force && cfbData && Date.now() - cfbAt < 60000) return;
+  $("cfbBody").innerHTML = '<p class="note">Loading the sheet and CFB news…</p>';
+  cfbData = await api({ op: "cfb_shares" });
+  cfbAt = Date.now();
+}
+async function openCfb(player) {
+  $("cfbModal").showModal();
+  try { await cfbLoad(false); } catch (err) { $("cfbBody").innerHTML = `<p class="err">${esc(err.message)}</p>`; return; }
+  if (player) {
+    const n = cfbData.news.find((i) => i.player === player && i.team);
+    if (n) { cfbSelectTeam(n.team); cfbChecked[n.key] = true; cfbApplyNews(); }
+  } else if (!cfbTeam) {
+    const t = cfbData.news.find((i) => i.team && i.reflected === false);
+    if (t) cfbSelectTeam(t.team);
+  }
+  cfbRender();
+}
+function cfbSelectTeam(team) {
+  if (team === cfbTeam) return;
+  cfbTeam = team; cfbChanges = {}; cfbChecked = {};
+  cfbData.news.filter((i) => i.team === team && i.reflected === false).forEach((i) => { cfbChecked[i.key] = true; });
+  cfbApplyNews();
+}
+function cfbApplyNews() {           // checked news sets each player's change; newest news wins
+  const rows = cfbRows(cfbTeam);
+  const news = cfbData.news.filter((i) => i.team === cfbTeam && i.suggest).slice().reverse();
+  news.forEach((i) => {
+    const idx = rows.findIndex((r) => r.r === i.row);
+    if (idx < 0) return;
+    if (cfbChecked[i.key]) cfbChanges[idx] = { mode: i.suggest, target: i.suggest === "IN" ? cfbInTarget(rows[idx]) : null, from: i.key };
+    else if (cfbChanges[idx] && cfbChanges[idx].from === i.key) delete cfbChanges[idx];
+  });
+}
+function cfbFmt(x) { return (Math.round(x * 10) / 10).toFixed(1); }
+function cfbRender() {
+  if (!cfbData) return;
+  $("cfbMeta").textContent = `sheet read ${fmtTime(cfbData.fetched_et)}`;
+  const open = cfbData.news.filter((i) => i.team && i.reflected !== true);
+  const counts = {};
+  open.forEach((i) => { counts[i.team] = (counts[i.team] || 0) + (i.reflected === false ? 1 : 0); });
+  const teamsWith = Object.keys(counts).sort((a, b) => counts[b] - counts[a] || a.localeCompare(b));
+  const unmatched = cfbData.news.filter((i) => !i.team);
+  const allTeams = Object.keys(cfbData.teams).sort();
+  let h = `<div class="note">Teams with CFB news (last 3 days) — number = items not yet in the sheet:</div>
+    <div class="teams">${teamsWith.map((t) => `<button data-cfbteam="${esc(t)}" class="${t === cfbTeam ? "on" : ""}">${esc(t)}${counts[t] ? ` (${counts[t]})` : ""}</button>`).join("") || '<span class="note">none</span>'}</div>
+    <label class="note">Any team <select id="cfbTeamSel"><option value="">—</option>${allTeams.map((t) => `<option ${t === cfbTeam ? "selected" : ""}>${esc(t)}</option>`).join("")}</select></label>`;
+  if (unmatched.length) h += `<details class="note"><summary>${unmatched.length} news item(s) not matched to a sheet row</summary>${unmatched.map((i) => `<div>${esc(i.line)}</div>`).join("")}</details>`;
+  if (cfbTeam) {
+    const rows = cfbRows(cfbTeam);
+    const news = cfbData.news.filter((i) => i.team === cfbTeam);
+    h += `<h4 style="margin:12px 0 4px">${esc(cfbTeam)}${rows[0] ? ` vs ${esc(rows[0].opp)}` : ""}</h4><div class="news">`;
+    h += news.length ? news.map((i) => `<label class="${i.reflected === true ? "dim" : ""}"><input type="checkbox" data-cfbnews="${esc(i.key)}" ${cfbChecked[i.key] ? "checked" : ""} ${i.suggest ? "" : "disabled"}>
+        <span>${esc(i.player)} — ${esc(i.old ? i.old + " → " : "added: ")}${esc(i.new)} · ${esc(i.game)} · ${fmtTime(i.detected_et)}
+        ${i.suggest ? `<b>→ ${esc(CFB_SUGGEST_LABEL[i.suggest])}</b>` : ""} ${i.reflected === true ? "(already in the sheet)" : i.reflected === null ? "(can't tell from the sheet)" : ""}</span></label>`).join("")
+      : '<div class="note">No CFB news for this team in the last 3 days. Set changes by hand below.</div>';
+    h += `</div><div class="tblwrap"><table><thead><tr><th class="nm">Player</th><th>Pos</th><th>Dp</th>${CFB_COLS.map((c) => `<th>${c}</th>`).join("")}<th>Change</th></tr></thead><tbody>`;
+    rows.forEach((r, i) => {
+      const ch = cfbChanges[i] || {};
+      const placeholder = Math.max(...r.s) <= 0.2001;
+      h += `<tr><td class="nm">${esc(r.name)}</td><td>${esc(r.pos)}</td><td>${esc(r.depth)}</td>${r.s.map((x) => `<td>${cfbFmt(x)}</td>`).join("")}
+        <td><select data-cfbmode="${i}">${CFB_MODES.map((m) => `<option value="${m}" ${ch.mode === m ? "selected" : ""}>${m || "—"}</option>`).join("")}</select></td></tr>`;
+      if (ch.mode === "IN" && placeholder) {
+        const t = ch.target || [r.s[0], 0, 0, 0, 0];
+        h += `<tr><td class="nm note">↳ back to (recent weeks${(r.wk || []).length ? ": " + r.wk.filter((w) => w[3]).map((w) => "W" + w[0]).join(", ") : ""})</td><td></td><td></td>
+          ${[0, 1, 2, 3, 4].map((c) => `<td><input data-cfbt="${i}:${c}" value="${cfbFmt(t[c])}"></td>`).join("")}<td></td></tr>`;
+      }
+    });
+    h += `</tbody></table></div><div class="row" style="margin-top:8px"><button id="cfbCalc">Calculate</button></div><div id="cfbOut"></div>`;
+  }
+  $("cfbBody").innerHTML = h;
+}
+function cfbCalculate() {
+  const rows = cfbRows(cfbTeam);
+  const { v, flags } = cfbCalc(rows, cfbChanges);
+  const first = rows[0].r, last = rows[rows.length - 1].r;
+  const contiguous = rows.every((r, i) => r.r === first + i);
+  const tsv = v.map((x) => x.map((y) => y.toFixed(2) + "%").join("\t")).join("\n");
+  let h = `<h4 style="margin:12px 0 4px">New shares</h4><div class="tblwrap"><table><thead><tr><th class="nm">Player</th>${CFB_COLS.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>`;
+  rows.forEach((r, i) => {
+    h += `<tr><td class="nm">${esc(r.name)}</td>${v[i].map((y, c) => Math.abs(y - r.s[c]) > 0.05
+      ? `<td class="chg">${cfbFmt(r.s[c])} → ${cfbFmt(y)}</td>` : `<td>${cfbFmt(y)}</td>`).join("")}</tr>`;
+  });
+  h += `<tr><td class="nm"><b>Total</b></td>${[0, 1, 2, 3, 4].map((c) => `<td><b>${cfbFmt(v.reduce((a, x) => a + x[c], 0))}</b></td>`).join("")}</tr></tbody></table></div>`;
+  if (flags.length) h += `<ul class="flags">${flags.map((f) => `<li>${esc(f)}</li>`).join("")}</ul>`;
+  h += contiguous
+    ? `<p><b>Paste at ${esc(cfbData.first_col)}${first}</b> — ${rows.length} rows (${first}–${last}), columns ${esc(cfbData.cols)}, ${esc(cfbTeam)} only.</p>`
+    : `<p class="err">${esc(cfbTeam)}'s rows aren't next to each other in the sheet — paste row by row.</p>`;
+  h += `<textarea id="cfbTsv" readonly>${esc(tsv)}</textarea><div class="row"><button id="cfbCopy">Copy</button> <span class="note" id="cfbCopied"></span></div>`;
+  $("cfbOut").innerHTML = h;
+}
+$("cfbBtn").addEventListener("click", () => openCfb(null));
+$("cfbClose").addEventListener("click", () => $("cfbModal").close());
+$("cfbRefresh").addEventListener("click", async () => {
+  try { await cfbLoad(true); const t = cfbTeam; cfbTeam = ""; if (t) cfbSelectTeam(t); cfbRender(); }
+  catch (err) { $("cfbBody").innerHTML = `<p class="err">${esc(err.message)}</p>`; }
+});
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-cfb]");
+  if (b) { openCfb(b.dataset.cfb); return; }
+  const t = e.target.closest("[data-cfbteam]");
+  if (t) { cfbSelectTeam(t.dataset.cfbteam); cfbRender(); return; }
+  if (e.target.id === "cfbCalc") cfbCalculate();
+  if (e.target.id === "cfbCopy") {
+    const ta = $("cfbTsv");
+    (navigator.clipboard ? navigator.clipboard.writeText(ta.value) : Promise.reject()).catch(() => { ta.select(); document.execCommand("copy"); })
+      .finally(() => { $("cfbCopied").textContent = "copied — click the paste cell in the sheet, then paste"; });
+  }
+});
+document.addEventListener("change", (e) => {
+  const el = e.target;
+  if (el.id === "cfbTeamSel" && el.value) { cfbSelectTeam(el.value); cfbRender(); }
+  if (el.dataset && el.dataset.cfbnews !== undefined) { cfbChecked[el.dataset.cfbnews] = el.checked; cfbApplyNews(); cfbRender(); }
+  if (el.dataset && el.dataset.cfbmode !== undefined) {
+    const i = Number(el.dataset.cfbmode), rows = cfbRows(cfbTeam);
+    if (el.value) cfbChanges[i] = { mode: el.value, target: el.value === "IN" ? cfbInTarget(rows[i]) : null };
+    else delete cfbChanges[i];
+    cfbRender();
+  }
+  if (el.dataset && el.dataset.cfbt !== undefined) {
+    const [i, c] = el.dataset.cfbt.split(":").map(Number);
+    const ch = cfbChanges[i]; if (!ch) return;
+    ch.target = ch.target || cfbRows(cfbTeam)[i].s.slice();
+    ch.target[c] = parseFloat(el.value) || 0;
+  }
+});
 </script>
 </body>
 </html>
