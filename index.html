@@ -2145,8 +2145,8 @@ function cfbInTarget(r) {
 }
 
 
-const CFB_MODES = ["", "OUT", "DOUBTFUL", "Q", "IN"];
-const CFB_SUGGEST_LABEL = { OUT: "OUT", DOUBTFUL: "DOUBTFUL", Q: "Q (15% dock)", IN: "IN (full role)" };
+const CFB_MODES = ["", "OUT", "Q", "IN"];   // DOUBTFUL = OUT, PROBABLE = AVAILABLE (Chris, 2026-11-14)
+const CFB_SUGGEST_LABEL = { OUT: "OUT", Q: "Q (15% dock)", IN: "IN (full role)" };
 let cfbData = null, cfbAt = 0, cfbTeam = "", cfbChanges = {}, cfbChecked = {};
 function cfbParseLine(line) {
   const m = String(line || "").match(/^\S+\s+(\S+)\s+(\S+)\s+(.+?)\s+—\s+(?:added:\s*([A-Z ]+?)|([A-Z ]+?)\s*→\s*([A-Z ]+?))\s*(?:·|$)/);
